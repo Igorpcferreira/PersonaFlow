@@ -62,3 +62,14 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-
 .delivery-rejected, .delivery-blocked, .delivery-expired { background: #fff0e8 !important; }
 .delivery-unknown .delivery-status { color: #866221; }
 @media (max-width: 560px) { .manual-send { flex-direction: column; align-items: stretch; } }
+.recipe-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 28px; align-items: start; margin-top: 22px; }
+.recipe-fields { display: grid; gap: 18px; }
+.recipe-fields .muted { margin: -8px 0 0; }
+.checkbox { display: flex; gap: 10px; align-items: center; }
+.checkbox input { width: 18px; height: 18px; accent-color: #174e46; }
+.recipe-preview { position: sticky; top: 24px; border: 1px solid #c7dcd2; border-radius: 14px; padding: 22px; background: #f2f7f3; }
+.recipe-preview button { display: block; margin-top: 14px; }
+.recipe-preview p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.preview-link { color: #397c6e; text-decoration: underline; }
+.rule-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+@media (max-width: 760px) { .recipe-grid { grid-template-columns: 1fr; } .recipe-preview { position: static; } }

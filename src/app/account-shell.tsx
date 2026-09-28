@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import InboxPanel from './inbox-panel';
+import AutomationsPanel from './automations-panel';
 
 export type AccountSummary = { id: string; label: string; pausedAt: string | null };
 export function AccountChooser() {
@@ -44,8 +45,8 @@ function AccountView({ accountId }: { accountId: string }) {
     {error ? <p role="alert" className="error">{error}</p> : !account ? <p role="status">Carregando conta…</p> : <>
       <h1>{account.label}</h1><p className="muted">Ambiente fictício. Todos os efeitos ficam nesta demonstração.</p>
       <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Inbox</a><a href="#automations">Automações</a><a href="#diagnostics">Diagnóstico</a></nav>
-      <InboxPanel key={accountId} accountId={accountId} />
-      <section className="panel" id="automations"><h2>Automações</h2><p>Nenhuma automação configurada nesta conta.</p></section>
+      <InboxPanel key={`inbox:${accountId}`} accountId={accountId} />
+      <AutomationsPanel key={`automations:${accountId}`} accountId={accountId} />
       <section className="panel" id="diagnostics"><h2>Diagnóstico</h2><p>{account.pausedAt ? 'Conta pausada.' : 'Conta fictícia disponível.'}</p></section>
     </>}
   </main>;

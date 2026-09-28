@@ -1,0 +1,68 @@
+import { test, expect } from '@playwright/test';
+import { DEMO_ACCOUNTS } from '../../src/shared/demo-data';
+
+const [a, b] = DEMO_ACCOUNTS;
+test('PF-023-L: editor por reel salva/edita/ativa, comentário assinado vira um efeito e replay não duplica', async ({ page }) => {
+  const browserIssues: string[] = [];
+  page.on('pageerror', () => browserIssues.push('uncaught_page_error'));
+  page.on('console', (message) => {
+    if (message.type() !== 'error' || message.text().startsWith('Failed to load resource:')) return;
+    const safeText = message.text().replace(/https?:\/\/\S+/g, '[URL omitida]').replace(/[\w.-]{24,}/g, '[valor longo omitido]');
+    browserIssues.push(safeText.slice(0, 500));
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entrar como operador fictício' }).click();
+  const loadedRecipes = page.waitForResponse((response) => response.request().method() === 'GET' && response.url().endsWith(`/api/accounts/${a.id}/automations`));
+  await page.getByRole('link', { name: /Aurora/ }).click();
+  expect((await loadedRecipes).status()).toBe(200);
+  await page.getByLabel('Nome da automação').fill('Reel configurado pela interface');
+  await page.getByLabel('Reel fictício', { exact: true }).selectOption('synthetic-reel-1');
+  await page.getByLabel('Palavras ou expressões').fill('site\nsaiba mais');
+  await page.getByLabel('DM de apresentação').fill('Apresentação editável de Aurora');
+  await page.getByLabel('Mensagem final', { exact: true }).fill('Final editável da receita');
+  await page.getByLabel('Link final').fill('https://example.invalid/aurora');
+  await expect(page.locator('.recipe-preview').getByText('Apresentação editável de Aurora')).toBeVisible();
+  await page.getByRole('button', { name: 'Salvar rascunho' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Rascunho salvo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ativar localmente' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Automação ativa' })).toBeVisible();
+  const rules = await (await page.request.get(`/api/accounts/${a.id}/automations`)).json();
+  const rule = rules.automations.find((item: { name: string }) => item.name === 'Reel configurado pela interface');
+  const origin = new URL(page.url()).origin;
+  expect((await page.request.post(`/api/accounts/${b.id}/automations/${rule.id}`, { headers: { Origin: origin }, data: { action: 'pause', revision: rule.revision } })).status()).toBe(404);
+  expect((await page.request.post(`/api/accounts/${a.id}/automations/${rule.id}`, { data: { action: 'pause', revision: rule.revision } })).status()).toBe(401);
+  await page.getByLabel('Comentário para simular').fill('Quero o SITE!');
+  await expect(page.getByText('Uma palavra da receita foi encontrada.')).toBeVisible();
+  await page.getByRole('button', { name: 'Simular comentário assinado' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Comentário fictício recebido' })).toBeVisible();
+  const list = await (await page.request.get(`/api/accounts/${a.id}/inbox`)).json();
+  // Outros testes podem ter criado entradas; a consulta aguarda o comentário desta receita.
+  let conversationId = list.conversations[0]?.id;
+  await expect.poll(async () => {
+    const current = await (await page.request.get(`/api/accounts/${a.id}/inbox`)).json();
+    conversationId = current.conversations.find((conversation: { contact: { igScopedUserId: string } }) => conversation.contact.igScopedUserId === 'synthetic-visitor')?.id;
+    if (!conversationId) return 0;
+    const thread = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
+    return thread.intents.filter((intent: { effect: string; status: string }) => intent.effect === 'private_reply' && intent.status === 'accepted').length;
+  }).toBe(1);
+  await page.getByRole('button', { name: 'Repetir mesmo evento' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Evento repetido' })).toBeVisible();
+  await page.getByRole('button', { name: 'Atualizar inbox' }).click();
+  await page.getByRole('button', { name: /Visitante fictício/ }).click();
+  await expect(page.locator('.messages').getByText(/Apresentação editável de Aurora/)).toBeVisible();
+  const after = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
+  expect(after.intents.filter((intent: { effect: string }) => intent.effect === 'private_reply')).toHaveLength(1);
+  await page.getByLabel('DM de apresentação').fill('Apresentação revisada');
+  await expect(page.getByRole('button', { name: 'Ativar localmente' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Salvar rascunho' }).click();
+  await expect(page.getByRole('button', { name: 'Reel configurado pela interface · Rascunho' })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Reel configurado pela interface · Rascunho' }).click();
+  await expect(page.getByLabel('DM de apresentação')).toHaveValue('Apresentação revisada');
+  await page.screenshot({ path: '.local-tools/qa/recipe.png', fullPage: true });
+  await page.getByRole('link', { name: 'Trocar conta' }).click();
+  await page.getByRole('link', { name: /Jardim/ }).click();
+  await expect(page.getByText('Nenhuma automação configurada nesta conta.')).toBeVisible();
+  await expect(page.getByLabel('DM de apresentação')).toHaveValue('');
+  expect(browserIssues).toEqual([]);
+});

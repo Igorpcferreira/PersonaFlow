@@ -98,7 +98,7 @@ export function Thread({ accountId, conversationId, onChange }: { accountId: str
         <p>{item.value.body.text}</p><strong className="delivery-status">{statusLabels[item.value.status] ?? 'Estado indisponível'}</strong>
       </article>)}</div>
       <label>Rascunho de mensagem<textarea value={draft} maxLength={2000} onChange={(event) => saveDraft(event.target.value)} /></label>
-      <div className="manual-send"><label>Resultado fictício<select value={outcome} onChange={(event) => setOutcome(event.target.value)} disabled={busy}>
+      <div className="manual-send"><label>Resultado fictício<select aria-label="Resultado fictício" value={outcome} onChange={(event) => setOutcome(event.target.value)} disabled={busy}>
         <option value="accepted">Aceito pela simulação</option><option value="timeout">Aceite com resposta perdida · incerto</option><option value="rejected">Falha confirmada</option>
       </select></label><button disabled={busy || !draft.trim() || !windowOpen || data.conversation.control !== 'manual'} onClick={() => void act('send')}>Enviar simulado</button></div>
       <p className="muted">{!windowOpen ? 'Janela de DM encerrada. É necessária uma nova interação elegível.' : data.conversation.control !== 'manual' ? 'Assuma a conversa para enviar uma mensagem.' : 'Envio fictício dentro da janela de 24 horas, conferida no servidor.'}</p>

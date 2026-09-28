@@ -45,7 +45,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm test` | Implementado: configuração inválida e sanitização, sem rede Meta |
 | `npm run test:integration` | Implementado: PostgreSQL 16 efêmero local ou `TEST_DATABASE_URL` local, transação/fila/isolamento |
 | `npm run test:browser:install` | Implementado: Chromium/Playwright somente em .local-tools/playwright, sem instalação global |
-| `npm run test:e2e` | Implementado/executado: supervisor/banco próprios e seed repetido; Chromium valida login, shell A/B, inbox e controle manual. Resultados atuais no BACKLOG/STATUS |
+| `npm run test:e2e` | Implementado/executado: supervisor/banco próprios e seed repetido; Chromium valida login, shell A/B, inbox, controle manual e editor básico por reel. Aceita arquivo/grep para verificação focada. Resultados atuais no BACKLOG/STATUS |
 | `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
@@ -55,7 +55,11 @@ Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéti
 
 ### Demonstração local
 
-Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://127.0.0.1:3000. Entre com identidade fictícia/Better Auth e escolha Aurora ou Jardim. Na inbox, abra “Receber mensagem fictícia”, escreva e simule uma DM; aguarde, atualize a inbox e selecione a conversa. Bytes assinados/webhook/fila/worker locais persistem a entrada. Assuma a conversa, escreva e escolha resultado fictício (aceito/incerto/falha); envie e atualize para observar o ledger. Retomar vale para novas entradas; unknown não tem retry. Rascunho/pedido são por conta/conversa; requestId persiste até confirmação durável do servidor, sem novo pedido em retry de falha da requisição. Histórico parcial/sintético; echo não dispara fluxo. Editor ainda em desenvolvimento. A inicialização prepara A/B; `demo:seed` repete sem sobrescrever trabalho e `demo:stop`/Ctrl+C encerram. .local-postgres/demo contém configuração privada/banco persistente ignorados por Git; não imprimir valores nem apagar a pasta. Se houver run.lock, verificar supervisor antes de agir.
+Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://127.0.0.1:3000. Entre com identidade fictícia/Better Auth e escolha Aurora ou Jardim. Na inbox, abra “Receber mensagem fictícia”, escreva e simule uma DM; aguarde, atualize a inbox e selecione a conversa. Bytes assinados/webhook/fila/worker locais persistem a entrada. Assuma a conversa, escreva e escolha resultado fictício (aceito/incerto/falha); envie e atualize para observar o ledger. Retomar vale para novas entradas; unknown não tem retry. Rascunho/pedido são por conta/conversa; requestId persiste até confirmação durável do servidor, sem novo pedido em retry de falha da requisição. Histórico parcial/sintético; echo não dispara fluxo.
+
+Em “Automações por reel”, escolha publicação fictícia e preencha nome, palavras/expressões, apresentação, mensagem final e link HTTP/HTTPS. Salve, confira a prévia e ative localmente. Simule um comentário com a palavra; atualize a inbox para observar a resposta privada única. Repetir o mesmo evento não cria efeito novo. Editar/salvar retorna a rascunho e cancela pendentes da revisão antiga. Resposta pública, botão e follow podem ser configurados no rascunho, mas ainda recusam ativação até seus handlers/testes PF-100/104-L. Campos começam vazios; nenhum texto fixo de exemplo é uma receita do usuário.
+
+A inicialização prepara A/B; `demo:seed` repete sem sobrescrever trabalho e `demo:stop`/Ctrl+C encerram. .local-postgres/demo contém configuração privada/banco persistente ignorados por Git; não imprimir valores nem apagar a pasta. Se houver run.lock, verificar supervisor antes de agir.
 
 Os E2E criam namespace e portas próprios; não usam personaflow_demo do usuário. `npm run test:browser:install` prepara o navegador no projeto antes de `npm run test:e2e`. Executor espera a web e sempre solicita parada do supervisor; não usa reset/limpeza dos dados persistentes. CI inclui integração, preparação do browser, E2E e build; configuração remota ainda sem execução.
 

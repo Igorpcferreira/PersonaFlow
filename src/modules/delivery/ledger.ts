@@ -24,36 +24,37 @@ async function enqueue(tx: Prisma.TransactionClient, boss: PgBoss, accountId: st
   if (!jobId) throw new Error('Intenção sem job persistido.');
 }
 export async function createIntent(db: Database, boss: PgBoss, value: IntentInput) {
+  return db.$transaction((tx) => createIntentInTransaction(tx, boss, value));
+}
+export async function createIntentInTransaction(tx: Prisma.TransactionClient, boss: PgBoss, value: IntentInput) {
   const parsed = input.safeParse(value);
   if (!parsed.success) throw new Error('Intenção inválida; conteúdo omitido.');
   const data = parsed.data;
-  return db.$transaction(async (tx) => {
-    await lockAccount(tx, data.accountId);
-    await lockConversation(tx, data.accountId, data.conversationId);
-    const account = await tx.instagramAccount.findUniqueOrThrow({ where: { id: data.accountId } });
-    const conversation = await tx.conversation.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.conversationId } }, include: { contact: true } });
-    const event = data.eventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.eventId } } }) : null;
-    const anchor = data.anchorEventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.anchorEventId } } }) : event;
-    const automation = data.automationId ? await tx.automation.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.automationId } } }) : null;
-    if (data.source === 'manual' ? data.effect !== 'manual' || !data.clientRequestId : !automation || !event || data.effect === 'manual') throw new Error('Origem da intenção inválida.');
-    if (data.source === 'manual' && conversation.control !== 'manual') throw new Error('Assuma a conversa antes de enviar.');
-    for (const origin of [event, anchor]) if (origin) {
-      const payload = origin.payload as { actorId?: unknown; echo?: unknown } | null;
-      if (!payload || payload.actorId !== conversation.contact.igScopedUserId || payload.actorId === account.professionalId || payload.echo !== false) throw new Error('Evento não pertence ao interlocutor elegível.');
-    }
-    if (['private_reply', 'public_reply'].includes(data.effect) && event?.kind !== 'comment') throw new Error('Efeito exige comentário elegível.');
-    if (data.effect === 'link' && (event?.kind !== 'postback' && event?.kind !== 'message')) throw new Error('Link exige interação elegível.');
-    const base = data.source === 'manual' ? conversation.lastEligibleInboundAt : event!.occurredAt;
-    const commentEffect = event?.kind === 'comment' && ['private_reply', 'public_reply', 'button'].includes(data.effect);
-    const deadline = new Date((base?.getTime() ?? 0) + (commentEffect ? 7 * DAY : DAY));
-    const key = data.source === 'manual' ? `manual:${data.clientRequestId}` : `${(data.effect === 'link' ? anchor! : event!).externalId}:${data.effect}`;
-    const created = await tx.deliveryIntent.createMany({ data: [{ accountId: data.accountId, conversationId: data.conversationId,
-      eventId: event?.id, automationId: automation?.id, automationRevision: automation?.revision,
-      controlVersion: conversation.controlVersion, connectionGeneration: account.connectionGeneration,
-      source: data.source, effect: data.effect, idempotencyKey: key, body: data.body, deadline, simulationOutcome: data.simulationOutcome ?? 'accepted' }], skipDuplicates: true });
-    const intent = await tx.deliveryIntent.findUniqueOrThrow({ where: { accountId_idempotencyKey: { accountId: data.accountId, idempotencyKey: key } } });
-    if (intent.conversationId !== data.conversationId) throw new Error('Pedido já pertence a outra conversa nesta conta.');
-    if (created.count) await enqueue(tx, boss, data.accountId, intent.id);
-    return intent;
-  });
+  await lockAccount(tx, data.accountId);
+  await lockConversation(tx, data.accountId, data.conversationId);
+  const account = await tx.instagramAccount.findUniqueOrThrow({ where: { id: data.accountId } });
+  const conversation = await tx.conversation.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.conversationId } }, include: { contact: true } });
+  const event = data.eventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.eventId } } }) : null;
+  const anchor = data.anchorEventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.anchorEventId } } }) : event;
+  const automation = data.automationId ? await tx.automation.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.automationId } } }) : null;
+  if (data.source === 'manual' ? data.effect !== 'manual' || !data.clientRequestId : !automation || !event || data.effect === 'manual') throw new Error('Origem da intenção inválida.');
+  if (data.source === 'manual' && conversation.control !== 'manual') throw new Error('Assuma a conversa antes de enviar.');
+  for (const origin of [event, anchor]) if (origin) {
+    const payload = origin.payload as { actorId?: unknown; echo?: unknown } | null;
+    if (!payload || payload.actorId !== conversation.contact.igScopedUserId || payload.actorId === account.professionalId || payload.echo !== false) throw new Error('Evento não pertence ao interlocutor elegível.');
+  }
+  if (['private_reply', 'public_reply'].includes(data.effect) && event?.kind !== 'comment') throw new Error('Efeito exige comentário elegível.');
+  if (data.effect === 'link' && (event?.kind !== 'postback' && event?.kind !== 'message')) throw new Error('Link exige interação elegível.');
+  const base = data.source === 'manual' ? conversation.lastEligibleInboundAt : event!.occurredAt;
+  const commentEffect = event?.kind === 'comment' && ['private_reply', 'public_reply', 'button'].includes(data.effect);
+  const deadline = new Date((base?.getTime() ?? 0) + (commentEffect ? 7 * DAY : DAY));
+  const key = data.source === 'manual' ? `manual:${data.clientRequestId}` : `${(data.effect === 'link' ? anchor! : event!).externalId}:${data.effect}`;
+  const created = await tx.deliveryIntent.createMany({ data: [{ accountId: data.accountId, conversationId: data.conversationId,
+    eventId: event?.id, automationId: automation?.id, automationRevision: automation?.revision,
+    controlVersion: conversation.controlVersion, connectionGeneration: account.connectionGeneration,
+    source: data.source, effect: data.effect, idempotencyKey: key, body: data.body, deadline, simulationOutcome: data.simulationOutcome ?? 'accepted' }], skipDuplicates: true });
+  const intent = await tx.deliveryIntent.findUniqueOrThrow({ where: { accountId_idempotencyKey: { accountId: data.accountId, idempotencyKey: key } } });
+  if (intent.conversationId !== data.conversationId) throw new Error('Pedido já pertence a outra conversa nesta conta.');
+  if (created.count) await enqueue(tx, boss, data.accountId, intent.id);
+  return intent;
 }

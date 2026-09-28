@@ -1,6 +1,7 @@
 import { createPrisma } from '../shared/db';
 import { createBoss, INBOUND_QUEUE } from './queue';
 import { processInboxEvent } from '../modules/inbox/ingestion';
+import { decideAutomation } from '../modules/automations/decision';
 import { startSyntheticDeliveryWorker } from './delivery';
 import { parseAuthConfig } from '../shared/auth-config';
 import { parseLocalSecrets } from '../shared/local-runtime';
@@ -19,7 +20,7 @@ async function main() {
       stopDelivery = await startSyntheticDeliveryWorker(db, boss, new TokenVault(new Map([[1, Buffer.from(settings.PERSONAFLOW_TOKEN_KEY, 'hex')]]), 1));
     }
     await boss.work(INBOUND_QUEUE, { pollingIntervalSeconds: 0.5 }, async (jobs) => {
-      for (const job of jobs) await processInboxEvent(db, job.data);
+      for (const job of jobs) await processInboxEvent(db, job.data, (tx, context) => decideAutomation(tx, boss, context));
     });
     console.log('Worker local ativo; efeitos exclusivamente sintéticos no banco local.');
     const stop = async () => {

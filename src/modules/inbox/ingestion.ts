@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Prisma, InstagramAccount, Conversation, Contact, InboundEvent } from '../../generated/prisma/client';
 import type { Database } from '../../shared/db';
 import { lockAccount } from '../../shared/account-lock';
 
@@ -6,7 +7,10 @@ const jobSchema = z.object({ accountId: z.uuid(), eventId: z.uuid() }).strict();
 const eventPayload = z.object({ actorId: z.string().min(1).max(200), text: z.string().max(20_000).nullable(),
   mediaId: z.string().nullable(), echo: z.boolean(), buttonPayload: z.string().nullable() }).strict();
 
-export async function processInboxEvent(db: Database, data: unknown) {
+export type NormalizedInbound = { account: InstagramAccount; event: InboundEvent; conversation: Conversation; contact: Contact;
+  payload: z.infer<typeof eventPayload>; eligible: boolean };
+export async function processInboxEvent(db: Database, data: unknown,
+  decide?: (tx: Prisma.TransactionClient, context: NormalizedInbound) => Promise<void>) {
   const parsed = jobSchema.safeParse(data);
   if (!parsed.success) throw new Error('Evento sem contexto válido.');
   const { accountId, eventId } = parsed.data;
@@ -31,7 +35,7 @@ export async function processInboxEvent(db: Database, data: unknown) {
       create: { accountId, contactId: contact.id, lastActivityAt: occurredAt }, update: {} });
     const eligible = event.generation === account.connectionGeneration && !payload.echo && ['message', 'story', 'postback'].includes(event.kind) &&
       (Boolean(payload.text?.trim()) || event.kind === 'postback');
-    await tx.conversation.update({ where: { accountId_id: { accountId, id: conversation.id } }, data: {
+    const updatedConversation = await tx.conversation.update({ where: { accountId_id: { accountId, id: conversation.id } }, data: {
       ...(occurredAt > conversation.lastActivityAt ? { lastActivityAt: occurredAt } : {}),
       ...(eligible && (!conversation.lastEligibleInboundAt || occurredAt > conversation.lastEligibleInboundAt) ? { lastEligibleInboundAt: occurredAt } : {}),
     } });
@@ -39,6 +43,7 @@ export async function processInboxEvent(db: Database, data: unknown) {
       body: payload.text, direction: payload.echo ? 'outbound' : 'inbound', echo: payload.echo,
       kind: event.kind === 'message' && payload.text === null ? 'unavailable' : event.kind,
       occurredAt, receivedAt: event.receivedAt }], skipDuplicates: true });
+    await decide?.(tx, { account, event, conversation: updatedConversation, contact, payload, eligible });
     await tx.inboundEvent.update({ where: { accountId_id: { accountId, id: eventId } }, data: { processedAt: new Date() } });
     return { accountId, eventId, conversationId: conversation.id, eligible, echo: payload.echo };
   });
