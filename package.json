@@ -1,0 +1,46 @@
+{
+  "name": "personaflow",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "next dev",
+    "worker:dev": "tsx src/jobs/worker.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:generate": "prisma generate",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/unit",
+    "test:integration": "tsx scripts/test-integration.ts",
+    "test:integration:external": "vitest run tests/integration",
+    "build": "next build",
+    "check": "npm run lint && npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "17.2.3",
+    "next": "16.3.6",
+    "pg": "8.16.3",
+    "pg-boss": "12.35.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@types/pg": "8.15.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "embedded-postgres": "16.14.0-beta.17",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.6",
+    "prisma": "7.10.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.2"
+  }
+}

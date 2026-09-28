@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model InstagramAccount {
+  id             String             @id @default(uuid()) @db.Uuid
+  professionalId String             @unique
+  appScopedId    String?
+  label          String
+  credential     AccountCredential?
+  contacts       Contact[]
+  conversations  Conversation[]
+  messages       Message[]
+  inboundEvents  InboundEvent[]
+}
+
+model AccountCredential {
+  accountId   String           @id @db.Uuid
+  ciphertext  Bytes
+  keyVersion  Int
+  generation  Int              @default(1)
+  account     InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  accountId      String           @db.Uuid
+  id             String           @default(uuid()) @db.Uuid
+  igScopedUserId String
+  account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+
+  @@id([accountId, id])
+  @@unique([accountId, igScopedUserId])
+}
+
+model Conversation {
+  accountId String           @db.Uuid
+  id        String           @default(uuid()) @db.Uuid
+  contactId String           @db.Uuid
+  account   InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact   Contact          @relation(fields: [accountId, contactId], references: [accountId, id], onDelete: Cascade)
+  messages  Message[]
+
+  @@id([accountId, id])
+}
+
+model Message {
+  accountId      String           @db.Uuid
+  id             String           @default(uuid()) @db.Uuid
+  conversationId String           @db.Uuid
+  externalId     String
+  body           String?
+  account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  conversation   Conversation     @relation(fields: [accountId, conversationId], references: [accountId, id], onDelete: Cascade)
+
+  @@id([accountId, id])
+  @@unique([accountId, externalId])
+}
+
+model InboundEvent {
+  accountId  String           @db.Uuid
+  id         String           @default(uuid()) @db.Uuid
+  externalId String
+  processedAt DateTime?
+  account    InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, id])
+  @@unique([accountId, externalId])
+}
