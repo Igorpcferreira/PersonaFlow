@@ -12,11 +12,13 @@ model InstagramAccount {
   professionalId String             @unique
   appScopedId    String?
   label          String
+  connectionGeneration Int          @default(0)
   credential     AccountCredential?
   contacts       Contact[]
   conversations  Conversation[]
   messages       Message[]
   inboundEvents  InboundEvent[]
+  oauthStates    MetaOAuthState[]
 }
 
 model AccountCredential {
@@ -24,6 +26,12 @@ model AccountCredential {
   ciphertext  Bytes
   keyVersion  Int
   generation  Int              @default(1)
+  scopes      String[]         @default([])
+  issuedAt    DateTime?        @db.Timestamptz(3)
+  expiresAt   DateTime?        @db.Timestamptz(3)
+  revokedAt   DateTime?        @db.Timestamptz(3)
+  refreshLease String?         @db.Uuid
+  refreshLeasedUntil DateTime?  @db.Timestamptz(3)
   account     InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
@@ -96,6 +104,7 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthStates MetaOAuthState[]
   @@index([userId])
 }
 
@@ -133,4 +142,17 @@ model LocalOAuthGrant {
   challenge     String
   redirectURI   String
   expiresAt     DateTime @db.Timestamptz(3)
+}
+
+model MetaOAuthState {
+  stateHash  String   @id
+  accountId  String   @db.Uuid
+  sessionId  String
+  generation Int
+  scopes     String[]
+  expiresAt  DateTime @db.Timestamptz(3)
+  account    InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  session    Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  @@index([accountId])
+  @@index([sessionId])
 }

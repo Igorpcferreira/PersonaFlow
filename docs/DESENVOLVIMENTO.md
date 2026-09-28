@@ -23,7 +23,7 @@ tests/
 docs/                     # documentação já existente
 ```
 
-PF-010–012 criaram a fundação. PF-014-L acrescenta `src/shared/auth*`, rotas/página de login, schema/migração Better Auth, supervisor local e testes E2E. Inbox, automações, delivery e integração Meta permanecem propostas até suas entregas locais. Regras puras ficam próximas ao módulo, sem framework/rede. Rotas autenticam, validam e chamam serviços; não duplicam regras do worker.
+PF-010–012 criaram a fundação. PF-014-L acrescenta `src/shared/auth*`, rotas/página de login, schema/migração Better Auth, supervisor local e testes E2E. PF-015-L implementa `modules/accounts/connections.ts`, `token-vault.ts` e contrato/provider OAuth sintético em `integrations/meta/`. Inbox, automações, delivery e HTTP Meta real permanecem propostas até suas entregas. Regras puras ficam próximas ao módulo, sem framework/rede. Rotas autenticam, validam e chamam serviços; não duplicam regras do worker.
 
 Na importação seletiva do OpenReply, registrar origem e modificações; mover função com testes úteis, evitando importar toda a árvore. Contratos externos têm fixtures por tipo/versão, incluindo campos desconhecidos para tolerar evolução aditiva sem disparar ações inesperadas.
 
@@ -48,7 +48,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
-Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. Webhook, transporte fake, 429 e demais cenários externos pertencem às tarefas posteriores. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
+Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. PF-015-L usa grants e identidades sintéticos, tokens cifrados e PostgreSQL real; guard fetch comprova ausência de chamadas nos testes. Webhook e transporte fake pertencem às tarefas posteriores. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
 
 ## Estratégia proporcional de testes
 
