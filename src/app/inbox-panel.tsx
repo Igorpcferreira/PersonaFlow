@@ -9,6 +9,8 @@ export type OutgoingIntent = { id: string; accountId: string; body: { text: stri
 export type ThreadData = { conversation: Omit<ConversationSummary, 'messages'> & { controlVersion: number; note: string | null }; windowOpen: boolean; messages: InboxMessage[]; intents: OutgoingIntent[]; nextCursor: string | null; partialHistory: boolean };
 const statusLabels: Record<string, string> = { pending: 'Na fila da simulação', sending: 'Simulando envio', accepted: 'Aceito pela simulação',
   rejected: 'Falhou na simulação', unknown: 'Incerto · não será reenviado', blocked: 'Bloqueado', canceled: 'Cancelado', expired: 'Prazo encerrado' };
+const effectLabels: Record<string, string> = { private_reply: 'Resposta privada fictícia', public_reply: 'Resposta pública fictícia',
+  button: 'Botão fictício', automatic_dm: 'DM automática fictícia', link: 'Link fictício', manual: 'Envio manual fictício' };
 export async function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { cache: 'no-store', signal });
   if (!response.ok) throw new Error('Solicitação indisponível.');
@@ -94,10 +96,10 @@ export function Thread({ accountId, conversationId, onChange }: { accountId: str
         <span className="message-meta">{message.echo ? 'Echo · saída identificada' : message.kind === 'comment' ? 'Comentário' : message.kind === 'story' ? 'Resposta a story · fictícia' : 'Entrada'} · {new Date(message.occurredAt).toLocaleString('pt-BR')}</span>
         <p>{message.body ?? 'Mensagem sem texto · conteúdo indisponível'}</p>
       </article>; })() : <article key={item.value.id} className={`message outbound delivery-${item.value.status}`}>
-        <span className="message-meta">{item.value.source === 'manual' ? 'Envio manual fictício' : 'Automação fictícia'} · {new Date(item.at).toLocaleString('pt-BR')}</span>
+        <span className="message-meta">{effectLabels[item.value.effect] ?? 'Automação fictícia'} · {new Date(item.at).toLocaleString('pt-BR')}</span>
         <p>{item.value.body.text}</p><strong className="delivery-status">{statusLabels[item.value.status] ?? 'Estado indisponível'}</strong>
       </article>)}</div>
-      <label>Rascunho de mensagem<textarea value={draft} maxLength={2000} onChange={(event) => saveDraft(event.target.value)} /></label>
+      <label>Rascunho de mensagem<textarea value={draft} disabled={busy} maxLength={2000} onChange={(event) => saveDraft(event.target.value)} /></label>
       <div className="manual-send"><label>Resultado fictício<select aria-label="Resultado fictício" value={outcome} onChange={(event) => setOutcome(event.target.value)} disabled={busy}>
         <option value="accepted">Aceito pela simulação</option><option value="timeout">Aceite com resposta perdida · incerto</option><option value="rejected">Falha confirmada</option>
       </select></label><button disabled={busy || !draft.trim() || !windowOpen || data.conversation.control !== 'manual'} onClick={() => void act('send')}>Enviar simulado</button></div>

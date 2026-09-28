@@ -63,7 +63,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-
 .delivery-unknown .delivery-status { color: #866221; }
 @media (max-width: 560px) { .manual-send { flex-direction: column; align-items: stretch; } }
 .recipe-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 28px; align-items: start; margin-top: 22px; }
-.recipe-fields { display: grid; gap: 18px; }
+.recipe-fields { display: grid; gap: 18px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .recipe-fields .muted { margin: -8px 0 0; }
 .checkbox { display: flex; gap: 10px; align-items: center; }
 .checkbox input { width: 18px; height: 18px; accent-color: #174e46; }

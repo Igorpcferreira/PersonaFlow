@@ -68,7 +68,7 @@ export default function AutomationsPanel({ accountId }: { accountId: string }) {
     {!data ? <p role="status">Carregando automações…</p> : <>
       {data.automations.length === 0 ? <p>Nenhuma automação configurada nesta conta.</p> : <div className="rule-list">{data.automations.map((rule) =>
         <button className="secondary" key={rule.id} disabled={busy} onClick={() => edit(rule)}>{rule.name} · {rule.status === 'active' ? 'Ativa' : rule.status === 'draft' ? 'Rascunho' : 'Pausada'}</button>)}</div>}
-      <div className="recipe-grid"><div className="recipe-fields">
+      <div className="recipe-grid"><fieldset className="recipe-fields" disabled={busy} aria-label="Campos da automação">
         <label>Nome da automação<input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} /></label>
         <label>Reel fictício<select aria-label="Reel fictício" value={mediaId} onChange={(event) => setMediaId(event.target.value)}><option value="">Selecione um reel</option>{data.reels.map((reel) => <option key={reel.id} value={reel.id}>{reel.title}</option>)}</select></label>
         <label>Palavras ou expressões<textarea value={terms} maxLength={2000} onChange={(event) => setTerms(event.target.value)} placeholder="Uma por linha ou separadas por vírgula" /></label>
@@ -85,13 +85,13 @@ export default function AutomationsPanel({ accountId }: { accountId: string }) {
         <div className="control-actions"><button disabled={busy} onClick={() => void perform('save')}>Salvar rascunho</button>
           <button className="secondary" disabled={busy || !selected || dirty || selected.status === 'active'} onClick={() => void perform('activate')}>Ativar localmente</button>
           <button className="secondary" disabled={busy || !selected || selected.status !== 'active'} onClick={() => void perform('pause')}>Pausar automação</button></div>
-      </div><aside className="recipe-preview"><h3>Prévia da sequência</h3><p>{config.introduction || 'Sua apresentação aparecerá aqui.'}</p>
+      </fieldset><aside className="recipe-preview"><h3>Prévia da sequência</h3><p>{config.introduction || 'Sua apresentação aparecerá aqui.'}</p>
         {config.publicReplyEnabled && <p>Resposta pública: {config.publicReply || 'Preencha o texto.'}</p>}
         {config.buttonEnabled && <span className="badge">{config.buttonTitle || 'Texto do botão'}</span>}
         {config.followRequired && <p>{config.followPrompt || 'Preencha o pedido para seguir.'}</p>}
         <p>{config.finalMessage || 'Sua mensagem final aparecerá aqui.'}</p><p className="preview-link">{config.link || 'Seu link aparecerá aqui.'}</p>
         {!config.buttonEnabled && <p className="muted">Sem botão, apresentação, mensagem final e link compõem uma única resposta privada.</p>}
-        <label>Comentário para simular<input value={comment} maxLength={2000} onChange={(event) => setComment(event.target.value)} /></label>
+        <label>Comentário para simular<input value={comment} maxLength={2000} disabled={busy} onChange={(event) => setComment(event.target.value)} /></label>
         <p className="muted">{comment ? matchingTerm(comment, terms.split(/\n|,/)) ? 'Uma palavra da receita foi encontrada.' : 'Nenhuma palavra da receita foi encontrada.' : 'Teste uma palavra ou expressão da sua receita.'}</p>
         <button disabled={busy || !selected || dirty || !comment.trim()} onClick={() => void simulate()}>Simular comentário assinado</button>
         {lastEvent && <button className="secondary" disabled={busy} onClick={() => void simulate(true)}>Repetir mesmo evento</button>}

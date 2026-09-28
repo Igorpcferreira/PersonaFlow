@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { DEMO_ACCOUNTS } from '../../src/shared/demo-data';
 
 const [a, b] = DEMO_ACCOUNTS;
-test('PF-023-L: editor por reel salva/edita/ativa, comentário assinado vira um efeito e replay não duplica', async ({ page }) => {
+test('PF-023/100-L: editor por reel ativa privada/pública próprias, edita e replay não duplica', async ({ page }) => {
   const browserIssues: string[] = [];
   page.on('pageerror', () => browserIssues.push('uncaught_page_error'));
   page.on('console', (message) => {
@@ -19,9 +19,12 @@ test('PF-023-L: editor por reel salva/edita/ativa, comentário assinado vira um 
   await page.getByLabel('Reel fictício', { exact: true }).selectOption('synthetic-reel-1');
   await page.getByLabel('Palavras ou expressões').fill('site\nsaiba mais');
   await page.getByLabel('DM de apresentação').fill('Apresentação editável de Aurora');
+  await page.getByLabel('Resposta pública opcional', { exact: true }).check();
+  await page.getByLabel('Texto da resposta pública').fill('Resposta pública editável de Aurora');
   await page.getByLabel('Mensagem final', { exact: true }).fill('Final editável da receita');
   await page.getByLabel('Link final').fill('https://example.invalid/aurora');
   await expect(page.locator('.recipe-preview').getByText('Apresentação editável de Aurora')).toBeVisible();
+  await expect(page.locator('.recipe-preview').getByText('Resposta pública: Resposta pública editável de Aurora')).toBeVisible();
   await page.getByRole('button', { name: 'Salvar rascunho' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Rascunho salvo' })).toBeVisible();
   await page.getByRole('button', { name: 'Ativar localmente' }).click();
@@ -45,13 +48,20 @@ test('PF-023-L: editor por reel salva/edita/ativa, comentário assinado vira um 
     const thread = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
     return thread.intents.filter((intent: { effect: string; status: string }) => intent.effect === 'private_reply' && intent.status === 'accepted').length;
   }).toBe(1);
+  await expect.poll(async () => {
+    const thread = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
+    return thread.intents.filter((intent: { effect: string; status: string }) => intent.effect === 'public_reply' && intent.status === 'accepted').length;
+  }).toBe(1);
   await page.getByRole('button', { name: 'Repetir mesmo evento' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Evento repetido' })).toBeVisible();
   await page.getByRole('button', { name: 'Atualizar inbox' }).click();
   await page.getByRole('button', { name: /Visitante fictício/ }).click();
   await expect(page.locator('.messages').getByText(/Apresentação editável de Aurora/)).toBeVisible();
+  await expect(page.locator('.messages').getByText('Resposta pública editável de Aurora', { exact: true })).toBeVisible();
+  await expect(page.locator('.messages').getByText(/Resposta pública fictícia/)).toBeVisible();
   const after = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
   expect(after.intents.filter((intent: { effect: string }) => intent.effect === 'private_reply')).toHaveLength(1);
+  expect(after.intents.filter((intent: { effect: string }) => intent.effect === 'public_reply')).toHaveLength(1);
   await page.getByLabel('DM de apresentação').fill('Apresentação revisada');
   await expect(page.getByRole('button', { name: 'Ativar localmente' })).toBeDisabled();
   await page.getByRole('button', { name: 'Salvar rascunho' }).click();

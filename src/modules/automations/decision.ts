@@ -17,6 +17,8 @@ export async function decideAutomation(tx: Prisma.TransactionClient, boss: PgBos
     await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
       automationId: rule.id, source: 'automatic', effect: 'private_reply',
       body: { text: `${config.introduction}\n${config.finalMessage}\n${config.link}`, link: config.link } });
+    if (config.publicReplyEnabled) await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
+      automationId: rule.id, source: 'automatic', effect: 'public_reply', body: { text: config.publicReply } });
     // Uma intenção privada por comentário, mesmo diante de registros conflitantes fora da API.
     return;
   }

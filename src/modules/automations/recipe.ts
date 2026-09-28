@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DEMO_REELS } from '../../shared/demo-data';
 
-export const LOCAL_RECIPE_CAPABILITIES = { publicReply: false, button: false, follow: false };
+export const LOCAL_RECIPE_CAPABILITIES = { publicReply: true, button: false, follow: false };
 export const recipeConfig = z.object({ terms: z.array(z.string().trim().min(1).max(80)).max(20), introduction: z.string().max(2000),
   publicReplyEnabled: z.boolean(), publicReply: z.string().max(1500), buttonEnabled: z.boolean(), buttonTitle: z.string().max(80),
   followRequired: z.boolean(), followPrompt: z.string().max(2000), finalMessage: z.string().max(2000),
