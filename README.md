@@ -2,7 +2,7 @@
 
 Fundação local de uma ferramenta auto-hospedada, exclusivamente para Instagram, planejada para duas contas independentes.
 
-**Estado: MVP local autorizado em 28/09/2026; revalidação da fundação PF-010–012 em andamento.** Login, contratos e interface simulados serão implementados em recortes locais conforme BACKLOG. Contas/apps reais, integração Meta, VPS e deploy permanecem fora do escopo.
+**Estado: fundação e login sintético local validados em 28/09/2026; PF-015-L em andamento.** `npm run demo` inicia banco/web/worker locais e permite entrar como operador fictício; `npm run demo:stop` encerra preservando os dados. Inbox/editor/contratos de mensagens ainda em desenvolvimento. Contas/apps reais, integração Meta, VPS e deploy fora do escopo.
 
 Comece pelo [índice da documentação](docs/README.md). Para retomar com um agente, leia [AGENTS.md](AGENTS.md), [estado atual](docs/STATUS.md), [handoff](docs/HANDOFF.md) e [backlog](docs/BACKLOG.md).
 

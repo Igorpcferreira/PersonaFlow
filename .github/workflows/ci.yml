@@ -1,4 +1,4 @@
-name: CI local foundation
+name: CI local simulated MVP
 
 on:
   pull_request:
@@ -37,4 +37,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:integration
+      - run: npm run test:browser:install
+      - run: npm run test:e2e
       - run: npm run build

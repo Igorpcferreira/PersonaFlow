@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação revalidada e PF-014-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação e PF-014-L validados, PF-015-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -11,9 +11,9 @@ Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação revalidad
 
 ## Trabalho atual e limites
 
-PF-014-L: implementar Better Auth 1.7.6/Prisma com provedor sintético, sessão persistida, allowlist por ID imutável, logout e CSRF. GitHub configurado sem criar app/credencial nem conectar conta real. Demonstração somente modo local explícito e loopback; recusar mecanismo fora desse modo. Próximos: PF-015–017-L, depois UI simulada e receitas. Ainda sem inbox/editor funcional.
+PF-014-L validado: Better Auth/Prisma 1.7.6 com OAuth sintético, sessão PostgreSQL, allowlist por ID imutável, logout/expiração/CSRF/state/PKCE/replay e concorrência. GitHub configurado com placeholders e bloqueado. Local explícito/loopback; produção/locked recusam o provedor. npm ci/geração/check (17 unitários), 10 integrações reais, 2 E2E Chromium e build aprovados. Auditoria zero; demo/demo:stop executados e processos encerrados. Login visual inspecionado. PF-015-L em andamento para contratos OAuth/tokens por conta; depois PF-016/017-L e UI/receitas. Ainda sem inbox/editor funcional.
 
-**Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** ainda não validados, somente recortes sintéticos planejados. **CI remoto:** workflow presente, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
+**Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 
 ## Pendências externas preservadas
 

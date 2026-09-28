@@ -23,7 +23,7 @@ tests/
 docs/                     # documentação já existente
 ```
 
-PF-010–012 criaram apenas `src/app` mínimo, `src/shared`, `src/modules/accounts`, `src/jobs`, `prisma`, `scripts` e testes unitários/de integração. O restante da árvore acima ainda é proposta. Regras puras ficam próximas ao módulo, sem framework nem rede. Rotas futuras farão autenticação, validação e chamada de serviço; não duplicarão regras do worker.
+PF-010–012 criaram a fundação. PF-014-L acrescenta `src/shared/auth*`, rotas/página de login, schema/migração Better Auth, supervisor local e testes E2E. Inbox, automações, delivery e integração Meta permanecem propostas até suas entregas locais. Regras puras ficam próximas ao módulo, sem framework/rede. Rotas autenticam, validam e chamam serviços; não duplicam regras do worker.
 
 Na importação seletiva do OpenReply, registrar origem e modificações; mover função com testes úteis, evitando importar toda a árvore. Contratos externos têm fixtures por tipo/versão, incluindo campos desconhecidos para tolerar evolução aditiva sem disparar ações inesperadas.
 
@@ -35,19 +35,28 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 |---|---|
 | `npm ci` | Implementado: instalação pelo lockfile |
 | `npm run setup` | Implementado: Node/config local e geração do cliente; não conecta ao banco |
-| `npm run dev` | Implementado: página mínima local, sem fluxos de produto |
+| `npm run dev` | Implementado: página de login local; bind explícito 127.0.0.1; exige banco/config para autenticação |
+| `npm run demo` | Implementado: supervisor inicia PostgreSQL 16 persistente personaflow_demo, aplica migrações validadas, web/worker loopback; gera dados de configuração locais sem imprimir segredos |
+| `npm run demo:stop` | Implementado: pede parada autenticada ao supervisor; encerra árvore web/worker/banco, preserva dados. Ctrl+C também solicita parada |
 | `npm run worker:dev` | Implementado: processa eventos locais, sem transporte de envio |
 | `npm run db:migrate` | Implementado: migração apenas para URL local validada |
 | `npm run lint` / `npm run typecheck` | Implementados: qualidade estática |
 | `npm test` | Implementado: configuração inválida e sanitização, sem rede Meta |
 | `npm run test:integration` | Implementado: PostgreSQL 16 efêmero local ou `TEST_DATABASE_URL` local, transação/fila/isolamento |
-| `npm run test:e2e` | Planejado para tarefas de interface; fora de PF-010–012 |
-| `npm run build` | Implementado: build da página mínima sem migração ou Meta |
+| `npm run test:browser:install` | Implementado: Chromium/Playwright somente em .local-tools/playwright, sem instalação global |
+| `npm run test:e2e` | Implementado e executado: executor inicia/encerra supervisor/banco próprios; 2 jornadas de login/estados no Chromium aprovadas em 28/09 |
+| `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
 Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. Webhook, transporte fake, 429 e demais cenários externos pertencem às tarefas posteriores. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
 
 ## Estratégia proporcional de testes
+
+### Demonstração local
+
+Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://127.0.0.1:3000. O botão usa identidade fictícia e sessão Better Auth persistida. Nesta etapa só o login está implementado; contas, inbox/editor e transporte fake virão após PF-015–017-L. Parar com `npm run demo:stop` em outro terminal ou Ctrl+C no supervisor. Nenhuma URL/chave é impressa; .local-postgres/demo contém configuração privada e banco persistente, ambos ignorados por Git. Não apagar essa pasta para contornar falhas. Se outro supervisor detiver run.lock, verificar o processo/controle antes de qualquer intervenção.
+
+Os E2E criam namespace e portas próprios; não usam personaflow_demo do usuário. `npm run test:browser:install` prepara o navegador no projeto antes de `npm run test:e2e`. Executor espera a web e sempre solicita parada do supervisor; não usa reset/limpeza dos dados persistentes. CI inclui integração, preparação do browser, E2E e build; configuração remota ainda sem execução.
 
 | Risco | Verificação que fornece evidência |
 |---|---|

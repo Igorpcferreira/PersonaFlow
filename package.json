@@ -6,8 +6,12 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "demo": "tsx scripts/demo.ts",
+    "demo:stop": "tsx scripts/demo.ts --stop",
+    "test:browser:install": "tsx scripts/install-browser.ts",
+    "test:e2e": "tsx scripts/test-e2e.ts",
     "setup": "tsx scripts/setup.ts",
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1",
     "worker:dev": "tsx src/jobs/worker.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:generate": "prisma generate",
@@ -20,8 +24,10 @@
     "check": "node node_modules/eslint/bin/eslint.js . && node node_modules/typescript/bin/tsc --noEmit && node node_modules/vitest/vitest.mjs run tests/unit"
   },
   "dependencies": {
+    "@better-auth/prisma-adapter": "1.7.6",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "better-auth": "1.7.6",
     "dotenv": "17.2.3",
     "next": "16.3.6",
     "pg": "8.16.3",
@@ -31,10 +37,15 @@
     "zod": "4.6.5"
   },
   "overrides": {
-    "prisma": { "mysql2": "3.24.4" },
-    "@prisma/config": { "deepmerge-ts": "8.0.2" }
+    "prisma": {
+      "mysql2": "3.24.4"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    }
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "@types/node": "24.19.0",
     "@types/pg": "8.15.5",
     "@types/react": "19.3.0",

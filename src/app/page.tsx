@@ -1,3 +1,5 @@
+import LoginPanel from './login-panel';
+
 export default function Home() {
-  return <main><h1>PersonaFlow</h1><p>Fundação local em validação.</p></main>;
+  return <main className="entry"><LoginPanel /></main>;
 }

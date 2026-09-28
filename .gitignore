@@ -7,3 +7,6 @@ src/generated/
 .local-postgres/
 coverage/
 *.tsbuildinfo
+.local-tools/
+test-results/
+playwright-report/
