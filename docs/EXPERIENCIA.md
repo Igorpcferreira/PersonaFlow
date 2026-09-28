@@ -41,4 +41,8 @@ Mesmo se houver canvas no futuro, ele deve compilar para contratos e políticas 
 
 ## Métricas com interpretação correta
 
-Contar eventos únicos, não tentativas repetidas. “Taxa de aceitação” = intenções aceitas / intenções de envio elegíveis; mostrar também bloqueadas e incertas fora do denominador e totais para evitar esconder falhas. Exibir respondentes após automação apenas quando houver vínculo observável e janela de atribuição definida; não chamar isso de vendas. Clique em link e crescimento de seguidores não entram no MVP.
+No recorte local PF-025-L, contar intenções únicas, não tentativas repetidas. “Taxa de aceitação” = aceitas / (aceitas + falhas confirmadas), apenas resultados definitivos. Incertas, bloqueadas, pendentes/em trânsito, canceladas e expiradas ficam fora do denominador e aparecem nos totais. Sem resultados definitivos, mostrar ausência de taxa. Efeitos distintos (privada/pública/botão/DM/link/manual) são intenções distintas. Aceite fictício não comprova entrega.
+
+Datas da lista referem-se à última atividade; métricas usam criação da intenção e recebimento da entrada sem echo, incluindo comentário/conteúdo indisponível. Tentativas pertencem à coorte de intenções criada no período, mesmo se ocorrerem depois. Intervalo inclusivo por dias UTC−03:00 da simulação, entre 2020 e 2099. Estado/manual/busca filtram somente a lista; a UI informa isso. Notas/aberta/resolvida não alteram controle/supressão nem se perdem em nova entrada. Edição concorrente exige atualizar/descartar explicitamente o rascunho.
+
+Respondentes após automação só podem ser acrescentados quando houver vínculo observável e janela de atribuição definida; não chamar isso de vendas. Clique em link e crescimento de seguidores não entram no MVP.

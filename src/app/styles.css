@@ -82,3 +82,10 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-
 .sequence-card { padding: 22px; border: 1px solid #c7dcd2; border-radius: 14px; background: #f2f7f3; }
 .sequence-card label { margin: 16px 0 10px; }
 .sequence-card .control-actions { margin-top: 20px; }
+.inbox-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: end; margin-top: 18px; }
+.inbox-filters label:nth-child(5) { grid-column: span 3; }
+.inbox-metrics, .organization-controls { border: 1px solid #dbe3df; border-radius: 10px; padding: 14px; margin: 18px 0; }
+.inbox-metrics summary, .organization-controls summary { cursor: pointer; color: #174e46; font-weight: 600; }
+.organization-controls fieldset { margin-top: 16px; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .inbox-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inbox-filters label:nth-child(5) { grid-column: auto; } .metric-grid { grid-template-columns: 1fr; } }

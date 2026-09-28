@@ -69,6 +69,7 @@ model Conversation {
   controlVersion Int         @default(0)
   status    String           @default("open")
   note      String?
+  organizationVersion Int    @default(0)
   lastEligibleInboundAt DateTime? @db.Timestamptz(3)
   lastActivityAt DateTime @default(now()) @db.Timestamptz(3)
   account   InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)

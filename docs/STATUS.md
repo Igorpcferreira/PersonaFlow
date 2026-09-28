@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L, PF-020–023-L básicos, PF-026-L e PF-024/100/104-L validados; PF-025-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L, PF-020–023-L básicos, PF-026-L e todos os recortes locais validados; fechamento persistente do goal em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -33,7 +33,9 @@ PF-100-L validado: pública fake configurável, intenção própria, idempotênc
 
 PF-104-L validado: sequência persistida, botão/introdução independentes, consulta fictícia de perfil por consentimento/interação elegíveis e revalidação antes do link. False pede seguir; unknown/erro retêm link; mudar perfil sozinho não envia nem abre janela. Link existente nunca ganha retry, inclusive unknown/blocked. Check (26), 59 integrações PostgreSQL, 12 E2E completos e build aprovados; screenshots/diff/console revisados.
 
-PF-024-L validado: DM/story textuais no editor/matcher, echo/sem texto ignorados, PARAR/SAIR persistidos e pendentes automáticos cancelados atomicamente. Pausa/manual prevalecem; supressão sobrevive a entradas/geração futuras. Check (27), 65 integrações PostgreSQL, E2E focado e build aprovados; screenshot/console/diff revisados. Organização/métricas PF-025-L em andamento e fechamento persistente ainda pendente.
+PF-024-L validado: DM/story textuais no editor/matcher, echo/sem texto ignorados, PARAR/SAIR persistidos e pendentes automáticos cancelados atomicamente. Pausa/manual prevalecem; supressão sobrevive a entradas/geração futuras. Check (27), 65 integrações PostgreSQL, E2E focado e build aprovados; screenshot/console/diff revisados.
+
+PF-025-L validado: aberta/resolvida/notas versionadas, filtros de estado/manual/datas/busca, cursor por conta/filtro e métricas por intenção. Datas de criação/recebimento, tentativas e denominador explicitados. Geração/check (27), 70 integrações PostgreSQL, 14 E2E completos e build aprovados; screenshot/diff/console revisados. Fechamento do goal com reinstalação/audit e restart persistente ainda pendente.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 

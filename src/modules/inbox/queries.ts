@@ -1,14 +1,21 @@
 import { z } from 'zod';
 import type { Database } from '../../shared/db';
 import { RequestRejected } from '../../shared/operator-context';
+import { dateRange, parseInboxFilters } from './filters';
 
-export async function listConversations(db: Database, accountId: string, cursor?: string) {
+export async function listConversations(db: Database, accountId: string, cursor?: string, filterValue: unknown = {}) {
+  const filters = parseInboxFilters(filterValue);
+  const base = { accountId, lastActivityAt: dateRange(filters), ...(filters.status !== 'all' ? { status: filters.status } : {}),
+    ...(filters.control !== 'all' ? { control: filters.control } : {}), ...(filters.q ? { OR: [
+      { note: { contains: filters.q, mode: 'insensitive' as const } }, { contact: { igScopedUserId: { contains: filters.q, mode: 'insensitive' as const } } },
+      { messages: { some: { accountId, body: { contains: filters.q, mode: 'insensitive' as const } } } },
+    ] } : {}) };
   if (cursor && !z.uuid().safeParse(cursor).success) throw new RequestRejected(400);
-  const pivot = cursor ? await db.conversation.findUnique({ where: { accountId_id: { accountId, id: cursor } } }) : null;
+  const pivot = cursor ? await db.conversation.findFirst({ where: { ...base, id: cursor } }) : null;
   if (cursor && !pivot) throw new RequestRejected(404);
-  const conversations = await db.conversation.findMany({ where: { accountId, ...(pivot ? { OR: [
+  const conversations = await db.conversation.findMany({ where: { ...base, ...(pivot ? { AND: [{ OR: [
     { lastActivityAt: { lt: pivot.lastActivityAt } }, { lastActivityAt: pivot.lastActivityAt, id: { lt: pivot.id } },
-  ] } : {}) }, orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }], take: 31,
+  ] }] } : {}) }, orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }], take: 31,
   select: { id: true, accountId: true, control: true, status: true, lastActivityAt: true, lastEligibleInboundAt: true,
     contact: { select: { igScopedUserId: true, suppressedAt: true } },
     messages: { take: 1, orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }], select: { body: true, kind: true } } } });
@@ -18,7 +25,7 @@ export async function listConversations(db: Database, accountId: string, cursor?
 export async function conversationThread(db: Database, accountId: string, conversationId: string, cursor?: string) {
   if (!z.uuid().safeParse(conversationId).success || (cursor && !z.uuid().safeParse(cursor).success)) throw new RequestRejected(400);
   const conversation = await db.conversation.findUnique({ where: { accountId_id: { accountId, id: conversationId } },
-    select: { id: true, accountId: true, control: true, controlVersion: true, status: true, note: true, lastEligibleInboundAt: true,
+    select: { id: true, accountId: true, control: true, controlVersion: true, status: true, note: true, organizationVersion: true, lastEligibleInboundAt: true,
       contact: { select: { igScopedUserId: true, suppressedAt: true } } } });
   if (!conversation) throw new RequestRejected(404);
   const pivot = cursor ? await db.message.findFirst({ where: { accountId, conversationId, id: cursor } }) : null;

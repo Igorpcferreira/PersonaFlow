@@ -1,6 +1,7 @@
 import { operatorContext, requestError } from '@/shared/operator-context';
 import { conversationThread } from '@/modules/inbox/queries';
 import { manualAction } from '@/modules/inbox/manual';
+import { organizeConversation } from '@/modules/inbox/organization';
 
 export async function GET(request: Request, { params }: { params: Promise<{ accountId: string; conversationId: string }> }) {
   try {
@@ -13,7 +14,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ acc
   try {
     const { accountId, conversationId } = await params;
     const { db, boss } = await operatorContext(request, accountId, true);
-    const result = await manualAction(db, boss, accountId, conversationId, await request.json());
+    const value: unknown = await request.json();
+    const result = value && typeof value === 'object' && 'action' in value && value.action === 'organize'
+      ? { organization: await organizeConversation(db, accountId, conversationId, value) }
+      : await manualAction(db, boss, accountId, conversationId, value);
     return Response.json(result, { status: 'intentId' in result ? 202 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return requestError(error); }
 }
