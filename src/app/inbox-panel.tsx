@@ -92,6 +92,7 @@ export function Thread({ accountId, conversationId, onChange }: { accountId: str
         <button className="secondary" disabled={busy} onClick={() => { setBusy(true); void refresh().catch(() => setError('Não foi possível atualizar a conversa.')).finally(() => setBusy(false)); }}>Atualizar conversa</button>
         <span className="badge">{data.conversation.control === 'manual' ? 'Controle manual' : 'Automático'}</span>
       </div>
+      {data.conversation.contact.suppressedAt && <p className="error">Automações suprimidas por PARAR/SAIR. Novas mensagens não removem essa preferência.</p>}
       <div className="messages">{timeline.map((item) => item.type === 'message' ? (() => { const message = item.value; return <article key={message.id} className={`message ${message.direction}`}>
         <span className="message-meta">{message.echo ? 'Echo · saída identificada' : message.kind === 'comment' ? 'Comentário' : message.kind === 'story' ? 'Resposta a story · fictícia' : 'Entrada'} · {new Date(message.occurredAt).toLocaleString('pt-BR')}</span>
         <p>{message.body ?? 'Mensagem sem texto · conteúdo indisponível'}</p>

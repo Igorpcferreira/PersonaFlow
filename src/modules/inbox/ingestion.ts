@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Prisma, InstagramAccount, Conversation, Contact, InboundEvent } from '../../generated/prisma/client';
 import type { Database } from '../../shared/db';
 import { lockAccount } from '../../shared/account-lock';
+import { isStopCommand } from '../automations/recipe';
 
 const jobSchema = z.object({ accountId: z.uuid(), eventId: z.uuid() }).strict();
 const eventPayload = z.object({ actorId: z.string().min(1).max(200), text: z.string().max(20_000).nullable(),
@@ -28,13 +29,19 @@ export async function processInboxEvent(db: Database, data: unknown,
       await tx.inboundEvent.update({ where: { accountId_id: { accountId, id: eventId } }, data: { processedAt: new Date() } });
       return null;
     }
-    const contact = await tx.contact.upsert({ where: { accountId_igScopedUserId: { accountId, igScopedUserId: payload.actorId } },
+    let contact = await tx.contact.upsert({ where: { accountId_igScopedUserId: { accountId, igScopedUserId: payload.actorId } },
       create: { accountId, igScopedUserId: payload.actorId }, update: {} });
     const occurredAt = new Date(Math.min(event.occurredAt.getTime(), event.receivedAt.getTime()));
     const conversation = await tx.conversation.upsert({ where: { accountId_contactId: { accountId, contactId: contact.id } },
       create: { accountId, contactId: contact.id, lastActivityAt: occurredAt }, update: {} });
     const eligible = event.generation === account.connectionGeneration && !payload.echo && ['message', 'story', 'postback'].includes(event.kind) &&
       (Boolean(payload.text?.trim()) || event.kind === 'postback');
+    // Opt-out vale mesmo durante pausa/controle manual, somente para entrada textual atual do contato.
+    if (eligible && ['message', 'story'].includes(event.kind) && isStopCommand(payload.text!)) {
+      if (!contact.suppressedAt) contact = await tx.contact.update({ where: { accountId_id: { accountId, id: contact.id } }, data: { suppressedAt: occurredAt } });
+      await tx.deliveryIntent.updateMany({ where: { accountId, conversationId: conversation.id, source: 'automatic', status: 'pending' },
+        data: { status: 'canceled', reason: 'contact_suppressed' } });
+    }
     const updatedConversation = await tx.conversation.update({ where: { accountId_id: { accountId, id: conversation.id } }, data: {
       ...(occurredAt > conversation.lastActivityAt ? { lastActivityAt: occurredAt } : {}),
       ...(eligible && (!conversation.lastEligibleInboundAt || occurredAt > conversation.lastEligibleInboundAt) ? { lastEligibleInboundAt: occurredAt } : {}),

@@ -29,11 +29,11 @@ export async function setAutomationStatus(db: Database, accountId: string, autom
     if (automation.revision !== revision) throw new RequestRejected(409, 'Esta automação mudou. Recarregue antes de continuar.');
     if (status === 'active') {
       const config = recipeConfig.safeParse(automation.config);
-      if (!config.success || !readyRecipe(config.data)) throw new RequestRejected(400, 'Preencha palavras, apresentação, mensagem final e link antes de ativar.');
+      if (!config.success || !readyRecipe(config.data, automation.trigger)) throw new RequestRejected(400, 'Revise palavras e resposta. Comentário exige apresentação, final e link; DM/story permitem apenas resposta textual de até 2000 caracteres.');
       if ((config.data.publicReplyEnabled && !LOCAL_RECIPE_CAPABILITIES.publicReply) || (config.data.buttonEnabled && !LOCAL_RECIPE_CAPABILITIES.button) ||
           (config.data.followRequired && !LOCAL_RECIPE_CAPABILITIES.follow)) throw new RequestRejected(409, 'Esta sequência opcional ainda não pode ser ativada nesta demonstração. Salve como rascunho.');
       const conflicting = await tx.automation.findFirst({ where: { accountId, trigger: automation.trigger, mediaId: automation.mediaId, status: 'active', id: { not: automationId } }, select: { id: true } });
-      if (conflicting) throw new RequestRejected(409, 'Já existe uma automação ativa para este reel nesta conta. Pause a outra antes de ativar.');
+      if (conflicting) throw new RequestRejected(409, 'Já existe uma automação ativa para este gatilho/reel nesta conta. Pause a outra antes de ativar.');
     }
     const updated = await tx.automation.update({ where: { accountId_id: { accountId, id: automationId } }, data: { status, revision: { increment: 1 } } });
     await tx.deliveryIntent.updateMany({ where: { accountId, automationId, status: 'pending' }, data: { status: 'canceled', reason: 'automation_changed' } });

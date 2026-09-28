@@ -10,8 +10,11 @@ export const recipeConfig = z.object({ terms: z.array(z.string().trim().min(1).m
 export type RecipeConfig = z.infer<typeof recipeConfig>;
 export const emptyRecipe: RecipeConfig = { terms: [], introduction: '', publicReplyEnabled: false, publicReply: '',
   buttonEnabled: false, buttonTitle: '', followRequired: false, followPrompt: '', finalMessage: '', link: '' };
-export const automationInput = z.object({ name: z.string().trim().min(1).max(100), mediaId: z.string().refine((value) => DEMO_REELS.some((reel) => reel.id === value)),
-  config: recipeConfig }).strict();
+export const triggers = ['comment', 'message', 'story'] as const;
+export type RecipeTrigger = typeof triggers[number];
+export const automationInput = z.object({ name: z.string().trim().min(1).max(100), trigger: z.enum(triggers).default('comment'),
+  mediaId: z.string().nullable().default(null), config: recipeConfig }).strict().refine((value) => value.trigger === 'comment'
+    ? DEMO_REELS.some((reel) => reel.id === value.mediaId) : value.mediaId === null);
 export const normalizeText = (value: string) => value.normalize('NFKC').toLocaleLowerCase('pt-BR').trim().replace(/\s+/gu, ' ');
 export const normalizeTerms = (terms: string[]) => [...new Set(terms.map(normalizeText).filter(Boolean))];
 export function matchingTerm(text: string, terms: string[]) {
@@ -21,7 +24,12 @@ export function matchingTerm(text: string, terms: string[]) {
     return new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'u').test(normalized);
   }) ?? null;
 }
-export function readyRecipe(config: RecipeConfig) {
+export const textReply = (config: RecipeConfig) => [config.introduction.trim(), config.finalMessage.trim(), config.link].filter(Boolean).join('\n');
+export const isStopCommand = (text: string) => /^(parar|sair)[.!?]*$/u.test(normalizeText(text));
+export function readyRecipe(config: RecipeConfig, trigger = 'comment') {
+  if (trigger === 'message' || trigger === 'story') return config.terms.length > 0 && Boolean(config.introduction.trim()) &&
+    !config.publicReplyEnabled && !config.buttonEnabled && !config.followRequired && textReply(config).length <= 2000;
+  if (trigger !== 'comment') return false;
   return config.terms.length > 0 && Boolean(config.introduction.trim() && config.finalMessage.trim() && config.link) &&
     (!config.publicReplyEnabled || Boolean(config.publicReply.trim())) && (!config.buttonEnabled || Boolean(config.buttonTitle.trim())) &&
     (!config.followRequired || Boolean(config.buttonEnabled && config.followPrompt.trim())) &&

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyRecipe, matchingTerm, normalizeTerms, readyRecipe } from '../../src/modules/automations/recipe';
+import { emptyRecipe, matchingTerm, normalizeTerms, readyRecipe, isStopCommand } from '../../src/modules/automations/recipe';
 
 describe('PF-023-L: termos Unicode e configuração', () => {
   it('palavras/expressões inteiras normalizam caixa/espaço/NFKC e preservam acentos', () => {
@@ -11,6 +11,16 @@ describe('PF-023-L: termos Unicode e configuração', () => {
     expect(matchingTerm('cafe\u0301?', ['café'])).toBe('café');
     expect(matchingTerm('cafés', ['café'])).toBeNull();
     expect(matchingTerm('link.site', ['link.site'])).toBe('link.site');
+  });
+  it('DM/story exigem texto, recusam passos de comentário e reconhecem opt-out completo', () => {
+    const text = { ...emptyRecipe, terms: ['ajuda'], introduction: 'Resposta' };
+    expect(readyRecipe(text, 'message')).toBe(true);
+    expect(readyRecipe(text, 'story')).toBe(true);
+    expect(readyRecipe(text)).toBe(false);
+    expect(readyRecipe({ ...text, buttonEnabled: true }, 'message')).toBe(false);
+    expect(readyRecipe({ ...text, introduction: 'a'.repeat(2000), finalMessage: 'b' }, 'story')).toBe(false);
+    for (const value of [' PARAR ', 'sair!', 'ＳＡＩＲ', 'Parar.']) expect(isStopCommand(value)).toBe(true);
+    for (const value of ['não quero parar', 'parar depois', 'sairei']) expect(isStopCommand(value)).toBe(false);
   });
   it('rascunho vazio não ativa; seguir exige botão e mensagem, texto privado tem limite', () => {
     expect(readyRecipe(emptyRecipe)).toBe(false);

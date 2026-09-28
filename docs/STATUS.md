@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L, PF-020–023-L básicos, PF-026-L e PF-100/104-L validados; PF-024-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L, PF-020–023-L básicos, PF-026-L e PF-024/100/104-L validados; PF-025-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -31,7 +31,9 @@ PF-026-L validado: diagnóstico sanitizado por conta, heartbeat/idades de fila/j
 
 PF-100-L validado: pública fake configurável, intenção própria, idempotência/revisão/pausa/A-B e falha pública independente da privada. Trigger PostgreSQL no job público reverte ambos os efeitos/mensagem/processedAt; reentrega produz uma vez cada. Check (26), 49 integrações, 3 E2E focados e build aprovados; screenshot/console/diff revisados. Inbox distingue tipos de efeito; campos de edição/manual bloqueados durante ação para preservar texto.
 
-PF-104-L validado: sequência persistida, botão/introdução independentes, consulta fictícia de perfil por consentimento/interação elegíveis e revalidação antes do link. False pede seguir; unknown/erro retêm link; mudar perfil sozinho não envia nem abre janela. Link existente nunca ganha retry, inclusive unknown/blocked. Check (26), 59 integrações PostgreSQL, 12 E2E completos e build aprovados; screenshots/diff/console revisados. PF-024-L em andamento; organização/métricas PF-025-L e fechamento persistente ainda pendentes.
+PF-104-L validado: sequência persistida, botão/introdução independentes, consulta fictícia de perfil por consentimento/interação elegíveis e revalidação antes do link. False pede seguir; unknown/erro retêm link; mudar perfil sozinho não envia nem abre janela. Link existente nunca ganha retry, inclusive unknown/blocked. Check (26), 59 integrações PostgreSQL, 12 E2E completos e build aprovados; screenshots/diff/console revisados.
+
+PF-024-L validado: DM/story textuais no editor/matcher, echo/sem texto ignorados, PARAR/SAIR persistidos e pendentes automáticos cancelados atomicamente. Pausa/manual prevalecem; supressão sobrevive a entradas/geração futuras. Check (27), 65 integrações PostgreSQL, E2E focado e build aprovados; screenshot/console/diff revisados. Organização/métricas PF-025-L em andamento e fechamento persistente ainda pendente.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 
