@@ -48,7 +48,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
-Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. PF-015-L usa grants e identidades sintéticos, tokens cifrados e PostgreSQL real; guard fetch comprova ausência de chamadas nos testes. Webhook e transporte fake pertencem às tarefas posteriores. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
+Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. PF-015-L usa grants e identidades sintéticos, tokens cifrados e PostgreSQL real; guard fetch comprova ausência de chamadas nos testes. PF-016-L implementa `/api/local-webhook` em loopback/local-demo, com chave exclusiva da simulação, limite 1 MiB, HMAC/UTF-8/parser e persistência atômica. `tests/fixtures/meta/batch.ts` é contrato sintético v1, sem garantia de wire format real. Inscrição fictícia separada por conta/geração; não chama subscribed_apps. Transporte fake pertence a PF-017-L. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
 
 ## Estratégia proporcional de testes
 

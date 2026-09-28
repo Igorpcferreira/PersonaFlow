@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação e PF-014/015-L validados, PF-016-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação e PF-014–016-L validados, PF-017-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -13,7 +13,9 @@ Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação e PF-014/
 
 PF-014-L validado: Better Auth/Prisma 1.7.6 com OAuth sintético, sessão PostgreSQL, allowlist por ID imutável, logout/expiração/CSRF/state/PKCE/replay e concorrência. GitHub configurado com placeholders e bloqueado. Local explícito/loopback; produção/locked recusam o provedor. npm ci/geração/check (17 unitários), 10 integrações reais, 2 E2E Chromium e build aprovados. Auditoria zero; demo/demo:stop executados e processos encerrados. Login visual inspecionado.
 
-PF-015-L validado: OAuth/tokens canônicos sintéticos sem rede, state vinculado a sessão/conta, identidades explícitas, AES-256-GCM com contexto da conexão, geração e lease persistida. Replays, expiração, scopes, chave/conta erradas, concorrência, resposta tardia, rotação e A alterada sem afetar B testados. Geração/check (19 unitários), integração (17 PostgreSQL reais) e build aprovados em 28/09. PF-016-L em andamento; depois ledger/executor PF-017-L e UI/receitas. Ainda sem inbox/editor funcional.
+PF-015-L validado: OAuth/tokens canônicos sintéticos sem rede, state vinculado a sessão/conta, identidades explícitas, AES-256-GCM com contexto da conexão, geração e lease persistida. Replays, expiração, scopes, chave/conta erradas, concorrência, resposta tardia, rotação e A alterada sem afetar B testados. Geração/check (19 unitários), integração (17 PostgreSQL reais) e build aprovados em 28/09.
+
+PF-016-L validado: webhook local assinado nos bytes, app único, subscription sintética por conta/geração, parser com campos aditivos, dedup durável e evento/job atômicos. Falha PostgreSQL real reverte lote A/B e responde 503. Check (24 unitários), 20 integrações reais, 2 E2E de regressão e build aprovados. PF-017-L em andamento para ledger/executor fake; depois UI/receitas. Ainda sem inbox/editor funcional. Documentação Meta pública retornou HTTP 429 nesta consulta; formato real continua pendente, sem substituir fonte primária por tutoriais de terceiros.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 

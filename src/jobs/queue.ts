@@ -27,6 +27,11 @@ export async function insertInboundEventAndJob(
   externalId: string,
 ) {
     const event = await tx.inboundEvent.create({ data: { accountId, externalId } });
+    const jobId = await enqueueEventJob(tx, boss, accountId, event.id);
+    return { event, jobId };
+}
+
+export async function enqueueEventJob(tx: Prisma.TransactionClient, boss: PgBoss, accountId: string, eventId: string) {
     const adapter = {
       executeSql: async (sql: string, values: unknown[]) => ({
         rows: await tx.$queryRawUnsafe<Record<string, unknown>[]>(sql, ...values),
@@ -34,11 +39,11 @@ export async function insertInboundEventAndJob(
     };
     const jobId = await boss.send(
       INBOUND_QUEUE,
-      { accountId, eventId: event.id },
+      { accountId, eventId },
       { db: adapter, retryLimit: 1, retryDelay: 0 },
     );
     if (!jobId) throw new Error('Job não persistido.');
-    return { event, jobId };
+    return jobId;
 }
 
 export async function processInboundEvent(db: Database, data: unknown) {

@@ -69,8 +69,16 @@ async function main() {
     if (!existsSync(settingsFile)) writeFileSync(settingsFile, JSON.stringify({
       password: randomBytes(32).toString('hex'), authSecret: randomBytes(32).toString('hex'),
     }), { mode: 0o600, flag: 'wx' });
-    const settings = JSON.parse(readFileSync(settingsFile, 'utf8')) as { password: string; authSecret: string };
+    const settings = JSON.parse(readFileSync(settingsFile, 'utf8')) as { password: string; authSecret: string;
+      tokenKey?: string; webhookSecret?: string; webhookVerifyToken?: string };
     if (!/^[a-f0-9]{64}$/.test(settings.password) || !/^[a-f0-9]{64}$/.test(settings.authSecret)) throw new Error('Configuração local inválida.');
+    if (!settings.tokenKey || !settings.webhookSecret || !settings.webhookVerifyToken) {
+      settings.tokenKey ??= randomBytes(32).toString('hex');
+      settings.webhookSecret ??= randomBytes(32).toString('hex');
+      settings.webhookVerifyToken ??= randomBytes(32).toString('hex');
+      writeFileSync(settingsFile, JSON.stringify(settings), { mode: 0o600 });
+    }
+    if (![settings.tokenKey, settings.webhookSecret, settings.webhookVerifyToken].every((value) => /^[a-f0-9]{64}$/.test(value!))) throw new Error('Configuração local inválida.');
     const dbPort = await availablePort();
     const webPort = await availablePort(Number(process.env.DEMO_PORT ?? 3000));
     const env: NodeJS.ProcessEnv = { ...process.env,
@@ -78,6 +86,8 @@ async function main() {
       PERSONAFLOW_MODE: 'local-demo', PERSONAFLOW_BIND_HOST: '127.0.0.1',
       BETTER_AUTH_URL: `http://127.0.0.1:${webPort}`, BETTER_AUTH_SECRET: settings.authSecret,
       OPERATOR_ALLOWLIST: 'local-demo:demo-operator-001', NODE_ENV: 'development',
+      PERSONAFLOW_TOKEN_KEY: settings.tokenKey, PERSONAFLOW_WEBHOOK_SECRET: settings.webhookSecret,
+      PERSONAFLOW_WEBHOOK_VERIFY_TOKEN: settings.webhookVerifyToken,
     };
     parseAuthConfig(env);
     postgres = new EmbeddedPostgres({ databaseDir: resolve(root, 'data'), user: 'persona_demo', password: settings.password,

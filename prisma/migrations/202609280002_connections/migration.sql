@@ -32,4 +32,3 @@ ALTER TABLE "MetaOAuthState" ADD CONSTRAINT "MetaOAuthState_accountId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "MetaOAuthState" ADD CONSTRAINT "MetaOAuthState_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

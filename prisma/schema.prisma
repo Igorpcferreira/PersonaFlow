@@ -13,6 +13,9 @@ model InstagramAccount {
   appScopedId    String?
   label          String
   connectionGeneration Int          @default(0)
+  webhookAppAlias String?
+  webhookGeneration Int?
+  webhookFields String[]             @default([])
   credential     AccountCredential?
   contacts       Contact[]
   conversations  Conversation[]
@@ -74,6 +77,11 @@ model InboundEvent {
   accountId  String           @db.Uuid
   id         String           @default(uuid()) @db.Uuid
   externalId String
+  kind       String           @default("foundation")
+  generation Int              @default(0)
+  occurredAt DateTime         @default(now()) @db.Timestamptz(3)
+  receivedAt DateTime         @default(now()) @db.Timestamptz(3)
+  payload    Json?
   processedAt DateTime?
   account    InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
