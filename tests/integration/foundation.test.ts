@@ -61,7 +61,7 @@ describe('PF-011: PostgreSQL e pg-boss reais', () => {
     }
   });
 
-  it('job confirmado sobrevive ao reinício do processo e é processado com a conta explícita', async () => {
+  it('job confirmado sobrevive à recriação de instância no mesmo processo, com conta explícita', async () => {
     const a = await account('restart');
     const before = createBoss();
     await before.start();

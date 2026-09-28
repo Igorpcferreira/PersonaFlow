@@ -17,7 +17,7 @@
     "test:integration": "tsx scripts/test-integration.ts",
     "test:integration:external": "vitest run tests/integration",
     "build": "next build",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "node node_modules/eslint/bin/eslint.js . && node node_modules/typescript/bin/tsc --noEmit && node node_modules/vitest/vitest.mjs run tests/unit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
@@ -29,6 +29,10 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"
+  },
+  "overrides": {
+    "prisma": { "mysql2": "3.24.4" },
+    "@prisma/config": { "deepmerge-ts": "8.0.2" }
   },
   "devDependencies": {
     "@types/node": "24.19.0",

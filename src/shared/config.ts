@@ -7,7 +7,8 @@ const databaseUrlSchema = z.url().refine((value) => {
     return (
       ['postgres:', 'postgresql:'].includes(url.protocol) &&
       ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname) &&
-      url.pathname.startsWith('/personaflow_')
+      /^\/personaflow_[a-z0-9_]+$/.test(url.pathname) &&
+      url.search === '' && url.hash === ''
     );
   } catch {
     return false;

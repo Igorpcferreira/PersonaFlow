@@ -5,8 +5,10 @@ import { getDatabaseUrl } from '../shared/config';
 
 export const INBOUND_QUEUE = 'inbound-event';
 
-export function createBoss() {
-  return new PgBoss({ connectionString: getDatabaseUrl(), schedule: false, supervise: false });
+export function createBoss(options: { superviseIntervalSeconds?: number; monitorIntervalSeconds?: number } = {}) {
+  const boss = new PgBoss({ connectionString: getDatabaseUrl(), schedule: false, ...options });
+  boss.on('error', () => console.error('Falha da fila local; detalhes omitidos.'));
+  return boss;
 }
 
 export async function enqueueInboundEvent(

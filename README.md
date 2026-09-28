@@ -2,11 +2,11 @@
 
 Fundação local de uma ferramenta auto-hospedada, exclusivamente para Instagram, planejada para duas contas independentes.
 
-**Estado: fundação local PF-010–012 implementada e testada; prova de reinício de processo em PF-011 pendente.** Não há integração Meta, login administrativo, inbox ou interface funcional. A autorização atual não cobre outras tarefas de implementação, contas reais ou deploy.
+**Estado: MVP local autorizado em 28/09/2026; revalidação da fundação PF-010–012 em andamento.** Login, contratos e interface simulados serão implementados em recortes locais conforme BACKLOG. Contas/apps reais, integração Meta, VPS e deploy permanecem fora do escopo.
 
 Comece pelo [índice da documentação](docs/README.md). Para retomar com um agente, leia [AGENTS.md](AGENTS.md), [estado atual](docs/STATUS.md), [handoff](docs/HANDOFF.md) e [backlog](docs/BACKLOG.md).
 
-O [prompt preparado para a próxima sessão](docs/PROXIMA_SESSAO.md) propõe um MVP local com dados fictícios e critérios verificáveis. Deve ser enviado pelo usuário para autorizar essa nova etapa; o arquivo não inicia execução.
+O [prompt preparado](docs/PROXIMA_SESSAO.md) foi recebido como pedido anexado nesta sessão; autorização registrada em PF-003/AGENTS. O arquivo sozinho não inicia execução.
 
 ## Execução local
 

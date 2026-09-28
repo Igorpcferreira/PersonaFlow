@@ -1,6 +1,6 @@
 # ADR-005 — Biblioteca para autenticação administrativa
 
-Data: 27/09/2026. Estado: selecionada para PF-014 e uso de GitHub aceito pelo usuário em 27/09/2026; autenticação ainda não implementada nem autorizada nesta fase.
+Data: 27/09/2026; autorização local ampliada em 28/09/2026. Estado: selecionada para PF-014; PF-014-L autorizado, implementação ainda pendente. Uso de GitHub aceito em 27/09/2026; sem criação de app/credenciais ou acesso real autorizado.
 
 Escolha: **Better Auth**, com adaptador Prisma e provedor GitHub OAuth. O usuário aceitou GitHub como login administrativo. A documentação oficial mantém integração com Next.js e Prisma 7. Fixar a versão apenas quando PF-014 for autorizada; não instalar uma biblioteca de autenticação sem uso na fundação local.
 

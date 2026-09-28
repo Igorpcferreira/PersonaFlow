@@ -6,7 +6,7 @@ Levantamento e verificações da fundação: **27/09/2026**. Preparação da pr�
 
 Leia [AGENTS](../AGENTS.md), [STATUS](STATUS.md), [HANDOFF](HANDOFF.md) e [BACKLOG](BACKLOG.md). O backlog define a sequência; o status resume a situação; o handoff explica a última transição. Se houver divergência, conferir arquivos, histórico e verificações antes de corrigir os registros.
 
-O [prompt para a próxima sessão](PROXIMA_SESSAO.md) propõe uma autorização explícita para o MVP local com contas fictícias. Está preparado para copiar; sua presença no repositório não autoriza executar novas tarefas.
+O [prompt para a próxima sessão](PROXIMA_SESSAO.md) foi recebido como pedido anexado do usuário em 28/09/2026; autorização ativa registrada em PF-003/AGENTS para recortes locais com contas fictícias. Sua presença no repositório, por si só, não autoriza executar tarefas.
 
 ## Plano
 

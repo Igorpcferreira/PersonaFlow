@@ -68,6 +68,12 @@ CI por PR configurado em `.github/workflows/ci.yml`: instalação pelo lockfile,
 
 ## Evidência de conclusão
 
+### Revalidação de dependências — 28/09/2026
+
+Prisma permanece em 7.10.0. Overrides fixos: `prisma → mysql2 3.24.4` (atualização na mesma major) e `@prisma/config → deepmerge-ts 8.0.2`. A versão 8 corrige recursão circular e muda principalmente merge de Maps; a inspeção de `@prisma/config/dist/index.js` observou uso de `deepmerge` como merger de configuração local, sem Maps no arquivo do projeto. A compatibilidade será aceita somente após geração, migração/integração e build. Não houve downgrade Prisma nem audit fix --force. Fontes primárias: [aviso DeepmergeTS](https://github.com/advisories/GHSA-ggr8-5vv4-36mx), [mudanças 8.0.0](https://github.com/RebeccaStevens/deepmerge-ts/releases/tag/v8.0.0) e [releases mysql2](https://github.com/sidorares/node-mysql2/releases), consultadas em 28/09/2026.
+
+`npm ci` passou com lockfile atualizado; `npm audit` e `npm audit --omit=dev` retornaram zero vulnerabilidades. ESLint 9.39.5 emite aviso de fim de suporte, sem vulnerabilidade reportada; atualização major deve ser avaliada com os peers do Next, não aplicada automaticamente neste reparo. Scripts de instalação de cinco dependências tiveram aviso npm allow-scripts; as verificações reais confirmarão os binários usados. O `check` chama binários do projeto diretamente para evitar uma versão antiga de npm encontrada no PATH dos scripts npm aninhados desta máquina.
+
 Backlog usa `planejado`, `bloqueado`, `em andamento`, `implementado` e `validado`. Implementado significa artefato presente, ainda sem todas as verificações; validado exige resultado dos critérios e ambiente indicado. Para tarefa exclusivamente documental, `validado` não significa produto funcionando.
 
 Registrar comando, data, resultado e limitações em resumo curto na tarefa/handoff, com link a CI quando houver. Não guardar dumps de terminal. Não marcar Meta real como validada por fixture, screenshot do formulário ou documentação de fornecedor.

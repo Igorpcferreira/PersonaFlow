@@ -7,7 +7,12 @@ describe('configuração local', () => {
       .toContain('personaflow_test');
   });
 
-  it.each([undefined, '', 'postgresql://token-muito-sensivel@externo.example/prod', 'https://localhost/personaflow_test'])
+  it.each([undefined, '', 'postgresql://token-muito-sensivel@externo.example/prod', 'https://localhost/personaflow_test',
+    'postgresql://localhost/personaflow_test?host=externo.example',
+    'postgresql://localhost/personaflow_test/other',
+    'postgresql://localhost/personaflow_',
+    'postgresql://localhost/personaflow_test#fragment',
+  ])
   ('rejeita configuração inválida sem revelar o valor', (input) => {
     expect(() => parseDatabaseUrl(input)).toThrowError(/DATABASE_URL inválida/);
     try { parseDatabaseUrl(input); } catch (error) {
