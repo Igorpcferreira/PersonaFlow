@@ -38,6 +38,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm run dev` | Implementado: página de login local; bind explícito 127.0.0.1; exige banco/config para autenticação |
 | `npm run demo` | Implementado: supervisor inicia PostgreSQL 16 persistente personaflow_demo, aplica migrações validadas, web/worker loopback; gera dados de configuração locais sem imprimir segredos |
 | `npm run demo:stop` | Implementado: pede parada autenticada ao supervisor; encerra árvore web/worker/banco, preserva dados. Ctrl+C também solicita parada |
+| `npm run demo:seed` | Implementado/executado: com supervisor ativo, prepara A/B novamente por controle local autenticado; não exige imprimir/copiar segredos e não sobrescreve dados existentes |
 | `npm run worker:dev` | Implementado: eventos locais; em local-demo usa executor fake, manutenção de intenções/heartbeat por conta; sem transporte externo |
 | `npm run db:migrate` | Implementado: migração apenas para URL local validada |
 | `npm run lint` / `npm run typecheck` | Implementados: qualidade estática |
@@ -54,7 +55,7 @@ Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéti
 
 ### Demonstração local
 
-Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://127.0.0.1:3000. O botão usa identidade fictícia e sessão Better Auth persistida. Nesta etapa só o login está implementado; contas, inbox/editor e transporte fake virão após PF-015–017-L. Parar com `npm run demo:stop` em outro terminal ou Ctrl+C no supervisor. Nenhuma URL/chave é impressa; .local-postgres/demo contém configuração privada e banco persistente, ambos ignorados por Git. Não apagar essa pasta para contornar falhas. Se outro supervisor detiver run.lock, verificar o processo/controle antes de qualquer intervenção.
+Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://127.0.0.1:3000. Entre com identidade fictícia/Better Auth e escolha Aurora ou Jardim. Shell/troca/rascunho por conta implementados; inbox/editor ainda em desenvolvimento. Backend tem OAuth/webhook/ledger/executor sintéticos. A inicialização prepara duas contas fictícias; `npm run demo:seed` em outro terminal repete o seed sem sobrescrever trabalho. Parar com `npm run demo:stop` ou Ctrl+C no supervisor. .local-postgres/demo contém configuração privada e banco persistente, ignorados por Git; não imprimir valores nem apagar a pasta para contornar falhas. Se outro supervisor detiver run.lock, verificar o processo/controle antes de qualquer intervenção.
 
 Os E2E criam namespace e portas próprios; não usam personaflow_demo do usuário. `npm run test:browser:install` prepara o navegador no projeto antes de `npm run test:e2e`. Executor espera a web e sempre solicita parada do supervisor; não usa reset/limpeza dos dados persistentes. CI inclui integração, preparação do browser, E2E e build; configuração remota ainda sem execução.
 

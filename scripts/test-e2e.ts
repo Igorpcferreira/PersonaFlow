@@ -33,6 +33,10 @@ async function main() {
   let completed = false;
   try {
     await waitForWeb(env.E2E_BASE_URL, supervisor);
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      const seeded = spawnSync(process.execPath, ['--import', 'tsx', resolve('scripts/demo.ts'), '--seed'], { env, stdio: 'ignore', windowsHide: true });
+      if (seeded.status !== 0) throw new Error('Seed repetido E2E não confirmou.');
+    }
     const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test'], { env, stdio: 'inherit', windowsHide: true });
     completed = result.status === 0;
   } finally {
@@ -40,7 +44,9 @@ async function main() {
       const exited = once(supervisor, 'exit');
       const stop = spawnSync(process.execPath, ['--import', 'tsx', resolve('scripts/demo.ts'), '--stop'], { env, stdio: 'ignore', windowsHide: true });
       if (stop.status !== 0) throw new Error('Parada E2E não confirmada; verificar supervisor local.');
-      await Promise.race([exited, new Promise((_, reject) => setTimeout(() => reject(new Error('Supervisor E2E não encerrou.')), 15_000))]);
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      try { await Promise.race([exited, new Promise((_, reject) => { deadline = setTimeout(() => reject(new Error('Supervisor E2E não encerrou.')), 15_000); })]); }
+      finally { if (deadline) clearTimeout(deadline); }
     }
   }
   if (!completed) throw new Error('E2E falhou.');

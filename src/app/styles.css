@@ -15,3 +15,23 @@ p { line-height: 1.65; }
 .muted { color: #697b7b; font-size: .9rem; }
 .error { border-left: 3px solid #b65735; padding: 10px 15px; background: #fff2eb; color: #873e23; }
 @media (max-width: 560px) { .entry { padding: 16px; } .login-card { padding: 28px; } h1 { font-size: 2.1rem; } }
+.account-chooser { margin: 24px 0; }
+.account-cards { display: grid; gap: 12px; }
+.account-card { color: #174e46; text-decoration: none; border: 1px solid #dbe3df; border-radius: 12px; padding: 18px; display: grid; gap: 8px; }
+.account-card:hover { background: #eef5ef; }
+.account-card span { font-size: .85rem; color: #697b7b; }
+.workspace { max-width: 1180px; margin: auto; padding: 28px; }
+.workspace-header { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #dbe3df; padding: 8px 0 24px; }
+.workspace-header a:last-child { margin-left: auto; }
+a { color: #174e46; }
+.brand { font-weight: 750; font-size: 1.2rem; text-decoration: none; }
+.workspace h1 { font-size: 2rem; margin-top: 32px; }
+.workspace-nav { display: flex; gap: 28px; margin: 24px 0; }
+.workspace-nav a { text-decoration: none; font-weight: 600; }
+.panel { background: white; border: 1px solid #dbe3df; border-radius: 16px; padding: 26px; margin: 20px 0; }
+h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+label { display: grid; gap: 8px; font-weight: 600; font-size: .9rem; }
+input, textarea, select { color: #172b32; border: 1px solid #bacdc6; border-radius: 8px; padding: 11px; width: 100%; background: white; }
+textarea { min-height: 96px; resize: vertical; }
+input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-offset: 2px; }
+@media (max-width: 560px) { .workspace { padding: 16px; } .workspace-header { gap: 10px; flex-wrap: wrap; } .panel { padding: 18px; } }

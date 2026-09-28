@@ -1,6 +1,6 @@
 # Documentação do PersonaFlow
 
-Levantamento e verificações da fundação: **27/09/2026**. Preparação da próxima sessão: **28/09/2026**. A fundação local PF-010–012 foi implementada e testada; prova de reinício de processo em PF-011, produto, Meta real e deploy permanecem pendentes conforme [STATUS](STATUS.md).
+Levantamento inicial: **27/09/2026**. MVP local autorizado e em implementação: **28/09/2026**. Fundação/reinício de processo, login sintético, contratos OAuth/webhook/ledger e shell A/B validados; inbox/editor em desenvolvimento. Meta real/deploy pendentes conforme [STATUS](STATUS.md).
 
 ## Retomada rápida
 

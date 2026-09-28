@@ -27,14 +27,15 @@ async function availablePort(port = 0) {
 }
 
 async function main() {
-  if (process.argv.includes('--stop')) {
+  if (process.argv.includes('--stop') || process.argv.includes('--seed')) {
+    const action = process.argv.includes('--seed') ? 'seed' : 'stop';
     const control = JSON.parse(readFileSync(controlFile, 'utf8')) as { port: number; token: string };
     if (!Number.isInteger(control.port) || control.port < 1 || control.port > 65535 || !/^[a-f0-9]{64}$/.test(control.token)) throw new Error('Controle local inválido.');
-    const response = await fetch(`http://127.0.0.1:${control.port}/stop`, {
+    const response = await fetch(`http://127.0.0.1:${control.port}/${action}`, {
       method: 'POST', headers: { Authorization: `Bearer ${control.token}` }, signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) throw new Error('Parada local recusada.');
-    console.log('Parada solicitada ao supervisor local. Dados fictícios preservados.');
+    console.log(action === 'seed' ? 'Contas fictícias preparadas novamente; trabalho existente preservado.' : 'Parada solicitada ao supervisor local. Dados fictícios preservados.');
     return;
   }
   mkdirSync(root, { recursive: true });
@@ -103,6 +104,8 @@ async function main() {
     if (!exists.rowCount) await postgres.createDatabase('personaflow_demo');
     const migrated = spawnSync(process.execPath, [resolve('node_modules/tsx/dist/cli.mjs'), 'scripts/migrate.ts'], { env, stdio: 'pipe', windowsHide: true });
     if (migrated.status !== 0) throw new Error('Migração da demonstração falhou; detalhes omitidos.');
+    const seeded = spawnSync(process.execPath, [resolve('node_modules/tsx/dist/cli.mjs'), 'scripts/seed-demo.ts'], { env, stdio: 'pipe', windowsHide: true });
+    if (seeded.status !== 0) throw new Error('Seed da demonstração falhou; detalhes omitidos.');
     const run = (args: string[]) => {
       const child = spawn(process.execPath, args, { env, stdio: 'ignore', windowsHide: true, detached: process.platform !== 'win32' });
       children.push(child);
@@ -116,8 +119,12 @@ async function main() {
     server = createServer((request, response) => {
       const candidate = Buffer.from(request.headers.authorization?.replace(/^Bearer /, '') ?? '');
       const expected = Buffer.from(token);
-      if (request.method !== 'POST' || request.url !== '/stop' || candidate.length !== expected.length || !timingSafeEqual(candidate, expected)) {
+      if (request.method !== 'POST' || !['/stop', '/seed'].includes(request.url ?? '') || candidate.length !== expected.length || !timingSafeEqual(candidate, expected)) {
         response.writeHead(403).end(); return;
+      }
+      if (request.url === '/seed') {
+        const result = spawnSync(process.execPath, [resolve('node_modules/tsx/dist/cli.mjs'), 'scripts/seed-demo.ts'], { env, stdio: 'pipe', windowsHide: true });
+        response.writeHead(result.status === 0 ? 200 : 503).end(); return;
       }
       response.writeHead(202).end();
       setImmediate(() => { void stop(); });

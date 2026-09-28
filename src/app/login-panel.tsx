@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AccountChooser } from './account-shell';
 
 export default function LoginPanel() {
   const [operator, setOperator] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export default function LoginPanel() {
     <p className="intro">Um espaço para configurar e acompanhar as suas automações.</p>
     {loading ? <p role="status">Consultando sessão…</p> : operator ? <>
       <p>Olá, {operator}. Sua sessão está ativa.</p>
-      <p className="muted">As contas e os fluxos fictícios estão em desenvolvimento. Esta demonstração não envia mensagens reais.</p>
+      <AccountChooser />
       <button disabled={busy} onClick={() => void act('sign-out')}>{busy ? 'Saindo…' : 'Sair'}</button>
     </> : <>
       <p>Entre com a identidade fictícia para explorar o ambiente local.</p>

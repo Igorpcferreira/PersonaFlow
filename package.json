@@ -8,6 +8,7 @@
   "scripts": {
     "demo": "tsx scripts/demo.ts",
     "demo:stop": "tsx scripts/demo.ts --stop",
+    "demo:seed": "tsx scripts/demo.ts --seed",
     "test:browser:install": "tsx scripts/install-browser.ts",
     "test:e2e": "tsx scripts/test-e2e.ts",
     "setup": "tsx scripts/setup.ts",
