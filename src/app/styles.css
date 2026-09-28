@@ -78,3 +78,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-
 .diagnostic-grid .control-actions { gap: 10px; }
 .diagnostic-grid label { margin: 18px 0 10px; }
 @media (max-width: 760px) { .diagnostic-grid { grid-template-columns: 1fr; } }
+.sequence-list { display: grid; gap: 20px; margin-top: 20px; }
+.sequence-card { padding: 22px; border: 1px solid #c7dcd2; border-radius: 14px; background: #f2f7f3; }
+.sequence-card label { margin: 16px 0 10px; }
+.sequence-card .control-actions { margin-top: 20px; }

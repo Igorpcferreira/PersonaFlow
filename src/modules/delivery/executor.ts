@@ -6,6 +6,7 @@ import { BeforeSendFailure, type SyntheticTransport } from '../../integrations/m
 import { TokenVault } from '../accounts/token-vault';
 import { lockConversation } from '../inbox/control';
 import { DAY, deliveryBody } from './ledger';
+import { readSyntheticFollow } from '../automations/sequence-profile';
 
 const contextSchema = z.object({ accountId: z.uuid(), intentId: z.uuid() }).strict();
 type ExecutionOptions = { now?: Date; leaseMs?: number; timeoutMs?: number };
@@ -30,6 +31,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     const event = intent.eventId ? await tx.inboundEvent.findUnique({ where: { accountId_id: { accountId: context.accountId, id: intent.eventId } } }) : null;
     const credential = account.credential;
     let reason: string | null = null;
+    let followRunId: string | null = null;
     if (intent.deadline <= now) reason = 'deadline_expired';
     else if (account.pausedAt) reason = 'account_paused';
     else if (!credential || credential.revokedAt || !credential.expiresAt || credential.expiresAt <= now ||
@@ -42,6 +44,16 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     else if (event && (event.generation !== intent.connectionGeneration || (event.payload as { echo?: boolean } | null)?.echo !== false)) reason = 'event_ineligible';
     const commentEffect = event?.kind === 'comment' && ['private_reply', 'public_reply', 'button'].includes(intent.effect);
     if (!reason && !commentEffect && (!conversation.lastEligibleInboundAt || conversation.lastEligibleInboundAt.getTime() + DAY <= now.getTime())) reason = 'window_closed';
+    if (!reason && intent.sequenceRunId) {
+      const run = await tx.sequenceRun.findUnique({ where: { accountId_id: { accountId: context.accountId, id: intent.sequenceRunId } } });
+      if (!run || run.conversationId !== intent.conversationId || run.automationId !== intent.automationId || run.automationRevision !== intent.automationRevision ||
+          run.connectionGeneration !== intent.connectionGeneration || run.controlVersion !== intent.controlVersion) reason = 'sequence_changed';
+      else if (intent.effect === 'automatic_dm' && (run.lastEligibleEventId !== intent.eventId || run.state !== 'follow_false')) reason = 'sequence_changed';
+      else if (intent.effect === 'link') {
+        if (run.lastEligibleEventId !== intent.eventId) reason = 'sequence_changed';
+        else if (run.followRequired) followRunId = run.id;
+      }
+    }
     const body = deliveryBody.safeParse(intent.body);
     if (!reason && !body.success) reason = 'payload_invalid';
     if (!reason) {
@@ -60,6 +72,16 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
       await tx.deliveryIntent.update({ where: { accountId_id: { accountId: context.accountId, id: intent.id } },
         data: { reason: 'account_limit', nextAttemptAt: limit.cooldownUntil && limit.cooldownUntil > now ? limit.cooldownUntil : new Date(limit.windowStartedAt.getTime() + 60_000) } });
       return null;
+    }
+    // Leitura de perfil só quando token/payload/janela/limite permitem reservar o envio.
+    // Manutenção de uma intenção limitada não vira polling do perfil.
+    if (followRunId) {
+      const follow = await readSyntheticFollow(tx, context.accountId, followRunId, intent.eventId!, now);
+      if (!follow.allowed || follow.state !== 'true') {
+        await tx.deliveryIntent.update({ where: { accountId_id: { accountId: context.accountId, id: intent.id } },
+          data: { status: 'blocked', reason: 'follow_unverified', nextAttemptAt: null } });
+        return null;
+      }
     }
     await tx.accountLimit.update({ where: { accountId: context.accountId }, data: { used: used + 1, ...(newWindow ? { windowStartedAt: now } : {}) } });
     const number = await tx.deliveryAttempt.count({ where: { accountId: context.accountId, intentId: intent.id } }) + 1;

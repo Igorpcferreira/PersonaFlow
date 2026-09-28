@@ -5,6 +5,7 @@ import Link from 'next/link';
 import InboxPanel from './inbox-panel';
 import AutomationsPanel from './automations-panel';
 import DiagnosticsPanel from './diagnostics-panel';
+import SequencesPanel from './sequences-panel';
 
 export type AccountSummary = { id: string; label: string; pausedAt: string | null };
 export function AccountChooser() {
@@ -45,9 +46,10 @@ function AccountView({ accountId }: { accountId: string }) {
     <header className="workspace-header"><Link className="brand" href="/">PersonaFlow</Link><span className="badge">Simulação local</span><Link href="/">Trocar conta</Link></header>
     {error ? <p role="alert" className="error">{error}</p> : !account ? <p role="status">Carregando conta…</p> : <>
       <h1>{account.label}</h1><p className="muted">Ambiente fictício. Todos os efeitos ficam nesta demonstração.</p>
-      <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Inbox</a><a href="#automations">Automações</a><a href="#diagnostics">Diagnóstico</a></nav>
+      <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Inbox</a><a href="#automations">Automações</a><a href="#sequences">Sequências</a><a href="#diagnostics">Diagnóstico</a></nav>
       <InboxPanel key={`inbox:${accountId}`} accountId={accountId} />
       <AutomationsPanel key={`automations:${accountId}`} accountId={accountId} />
+      <SequencesPanel key={`sequences:${accountId}`} accountId={accountId} />
       <DiagnosticsPanel key={`diagnostics:${accountId}`} accountId={accountId} />
     </>}
   </main>;

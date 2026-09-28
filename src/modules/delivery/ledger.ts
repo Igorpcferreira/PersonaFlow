@@ -14,7 +14,7 @@ export const deliveryBody = z.object({ text: z.string().min(1).max(2000),
   link: z.url().max(2000).refine((value) => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
 }).strict();
 const input = z.object({ accountId: z.uuid(), conversationId: z.uuid(), eventId: z.uuid().optional(), anchorEventId: z.uuid().optional(),
-  automationId: z.uuid().optional(), source: z.enum(['manual', 'automatic']), effect: z.enum(effects),
+  automationId: z.uuid().optional(), sequenceRunId: z.uuid().optional(), source: z.enum(['manual', 'automatic']), effect: z.enum(effects),
   clientRequestId: z.uuid().optional(), simulationOutcome: z.enum(simulationOutcomes).optional(), body: deliveryBody });
 export type IntentInput = z.infer<typeof input>;
 
@@ -37,6 +37,13 @@ export async function createIntentInTransaction(tx: Prisma.TransactionClient, bo
   const event = data.eventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.eventId } } }) : null;
   const anchor = data.anchorEventId ? await tx.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.anchorEventId } } }) : event;
   const automation = data.automationId ? await tx.automation.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.automationId } } }) : null;
+  if (data.sequenceRunId) {
+    const run = await tx.sequenceRun.findUniqueOrThrow({ where: { accountId_id: { accountId: data.accountId, id: data.sequenceRunId } } });
+    if (data.source !== 'automatic' || run.conversationId !== conversation.id || run.automationId !== automation?.id ||
+        run.automationRevision !== automation.revision || run.connectionGeneration !== account.connectionGeneration || run.controlVersion !== conversation.controlVersion ||
+        (data.effect === 'link' ? anchor?.id !== run.commentEventId || run.lastEligibleEventId !== event?.id :
+          data.effect === 'automatic_dm' ? run.lastEligibleEventId !== event?.id : event?.id !== run.commentEventId)) throw new Error('Sequência fora do contexto elegível.');
+  }
   if (data.source === 'manual' ? data.effect !== 'manual' || !data.clientRequestId : !automation || !event || data.effect === 'manual') throw new Error('Origem da intenção inválida.');
   if (data.source === 'manual' && conversation.control !== 'manual') throw new Error('Assuma a conversa antes de enviar.');
   for (const origin of [event, anchor]) if (origin) {
@@ -50,7 +57,7 @@ export async function createIntentInTransaction(tx: Prisma.TransactionClient, bo
   const deadline = new Date((base?.getTime() ?? 0) + (commentEffect ? 7 * DAY : DAY));
   const key = data.source === 'manual' ? `manual:${data.clientRequestId}` : `${(data.effect === 'link' ? anchor! : event!).externalId}:${data.effect}`;
   const created = await tx.deliveryIntent.createMany({ data: [{ accountId: data.accountId, conversationId: data.conversationId,
-    eventId: event?.id, automationId: automation?.id, automationRevision: automation?.revision,
+    eventId: event?.id, automationId: automation?.id, sequenceRunId: data.sequenceRunId, automationRevision: automation?.revision,
     controlVersion: conversation.controlVersion, connectionGeneration: account.connectionGeneration,
     source: data.source, effect: data.effect, idempotencyKey: key, body: data.body, deadline, simulationOutcome: data.simulationOutcome ?? 'accepted' }], skipDuplicates: true });
   const intent = await tx.deliveryIntent.findUniqueOrThrow({ where: { accountId_idempotencyKey: { accountId: data.accountId, idempotencyKey: key } } });

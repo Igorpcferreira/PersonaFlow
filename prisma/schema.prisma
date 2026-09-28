@@ -29,6 +29,8 @@ model InstagramAccount {
   syntheticEffects SyntheticEffect[]
   limit          AccountLimit?
   heartbeats     WorkerHeartbeat[]
+  sequenceRuns   SequenceRun[]
+  syntheticProfiles SyntheticProfile[]
 }
 
 model AccountCredential {
@@ -53,6 +55,8 @@ model Contact {
   account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   conversations  Conversation[]
 
+  syntheticProfile SyntheticProfile?
+
   @@id([accountId, id])
   @@unique([accountId, igScopedUserId])
 }
@@ -71,6 +75,7 @@ model Conversation {
   contact   Contact          @relation(fields: [accountId, contactId], references: [accountId, id], onDelete: Cascade)
   messages  Message[]
   intents   DeliveryIntent[]
+  sequenceRuns SequenceRun[]
 
   @@id([accountId, id])
   @@unique([accountId, contactId])
@@ -106,6 +111,8 @@ model InboundEvent {
   processedAt DateTime?
   account    InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   intents    DeliveryIntent[]
+  sequenceSources SequenceRun[] @relation("SequenceSource")
+  sequenceInteractions SequenceRun[] @relation("SequenceInteraction")
 
   @@id([accountId, id])
   @@unique([accountId, externalId])
@@ -199,6 +206,7 @@ model Automation {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   intents DeliveryIntent[]
+  sequenceRuns SequenceRun[]
   @@id([accountId, id])
 }
 
@@ -208,6 +216,7 @@ model DeliveryIntent {
   conversationId String @db.Uuid
   eventId String? @db.Uuid
   automationId String? @db.Uuid
+  sequenceRunId String? @db.Uuid
   automationRevision Int?
   controlVersion Int
   connectionGeneration Int
@@ -228,6 +237,7 @@ model DeliveryIntent {
   conversation Conversation @relation(fields: [accountId, conversationId], references: [accountId, id], onDelete: Cascade)
   event InboundEvent? @relation(fields: [accountId, eventId], references: [accountId, id])
   automation Automation? @relation(fields: [accountId, automationId], references: [accountId, id])
+  sequenceRun SequenceRun? @relation(fields: [accountId, sequenceRunId], references: [accountId, id])
   attempts DeliveryAttempt[]
   syntheticEffects SyntheticEffect[]
   @@id([accountId, id])
@@ -277,4 +287,42 @@ model WorkerHeartbeat {
   seenAt DateTime @db.Timestamptz(3)
   account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   @@id([accountId, kind])
+}
+
+model SequenceRun {
+  accountId String @db.Uuid
+  id String @default(uuid()) @db.Uuid
+  commentEventId String @db.Uuid
+  conversationId String @db.Uuid
+  automationId String @db.Uuid
+  automationRevision Int
+  connectionGeneration Int
+  controlVersion Int
+  followRequired Boolean
+  state String @default("waiting")
+  followState String @default("unknown")
+  lastEligibleEventId String? @db.Uuid
+  consentedAt DateTime? @db.Timestamptz(3)
+  profileChecks Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [accountId, conversationId], references: [accountId, id], onDelete: Cascade)
+  automation Automation @relation(fields: [accountId, automationId], references: [accountId, id])
+  commentEvent InboundEvent @relation("SequenceSource", fields: [accountId, commentEventId], references: [accountId, id])
+  lastEligibleEvent InboundEvent? @relation("SequenceInteraction", fields: [accountId, lastEligibleEventId], references: [accountId, id])
+  intents DeliveryIntent[]
+  @@id([accountId, id])
+  @@unique([accountId, commentEventId])
+}
+
+model SyntheticProfile {
+  accountId String @db.Uuid
+  contactId String @db.Uuid
+  follows String @default("unknown")
+  simulateError Boolean @default(false)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [accountId, contactId], references: [accountId, id], onDelete: Cascade)
+  @@id([accountId, contactId])
 }

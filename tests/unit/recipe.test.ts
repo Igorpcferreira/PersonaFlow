@@ -18,5 +18,7 @@ describe('PF-023-L: termos Unicode e configuração', () => {
     expect(readyRecipe(ready)).toBe(true);
     expect(readyRecipe({ ...ready, followRequired: true, followPrompt: 'Siga para continuar' })).toBe(false);
     expect(readyRecipe({ ...ready, introduction: 'a'.repeat(2000) })).toBe(false);
+    expect(readyRecipe({ ...ready, buttonEnabled: true, buttonTitle: 'Continuar', introduction: 'a'.repeat(2000) })).toBe(true);
+    expect(readyRecipe({ ...ready, buttonEnabled: true, buttonTitle: 'Continuar', finalMessage: 'a'.repeat(2000) })).toBe(false);
   });
 });
