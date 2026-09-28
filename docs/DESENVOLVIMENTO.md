@@ -38,7 +38,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm run dev` | Implementado: página de login local; bind explícito 127.0.0.1; exige banco/config para autenticação |
 | `npm run demo` | Implementado: supervisor inicia PostgreSQL 16 persistente personaflow_demo, aplica migrações validadas, web/worker loopback; gera dados de configuração locais sem imprimir segredos |
 | `npm run demo:stop` | Implementado: pede parada autenticada ao supervisor; encerra árvore web/worker/banco, preserva dados. Ctrl+C também solicita parada |
-| `npm run worker:dev` | Implementado: processa eventos locais, sem transporte de envio |
+| `npm run worker:dev` | Implementado: eventos locais; em local-demo usa executor fake, manutenção de intenções/heartbeat por conta; sem transporte externo |
 | `npm run db:migrate` | Implementado: migração apenas para URL local validada |
 | `npm run lint` / `npm run typecheck` | Implementados: qualidade estática |
 | `npm test` | Implementado: configuração inválida e sanitização, sem rede Meta |
@@ -48,7 +48,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
-Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. PF-015-L usa grants e identidades sintéticos, tokens cifrados e PostgreSQL real; guard fetch comprova ausência de chamadas nos testes. PF-016-L implementa `/api/local-webhook` em loopback/local-demo, com chave exclusiva da simulação, limite 1 MiB, HMAC/UTF-8/parser e persistência atômica. `tests/fixtures/meta/batch.ts` é contrato sintético v1, sem garantia de wire format real. Inscrição fictícia separada por conta/geração; não chama subscribed_apps. Transporte fake pertence a PF-017-L. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
+Os testes de PF-012 criam duas contas fictícias e credenciais de bytes sintéticos. PF-015-L usa grants e identidades sintéticos, tokens cifrados e PostgreSQL real; guard fetch comprova ausência de chamadas nos testes. PF-016-L implementa `/api/local-webhook` em loopback/local-demo, com chave exclusiva da simulação, limite 1 MiB, HMAC/UTF-8/parser e persistência atômica. `tests/fixtures/meta/batch.ts` é contrato sintético v1, sem garantia de wire format real. Inscrição fictícia separada por conta/geração; não chama subscribed_apps. PF-017-L implementa ledger/executor e FakeTransport: apenas grava SyntheticEffect no PostgreSQL, sem URL/chamada de rede. Aceite fake não significa entrega real. Nenhum código atual pode enviar à Meta. Para Meta real futuramente, endpoint HTTPS de teste separado; não usar VPS de produção como ambiente de desenvolvimento.
 
 ## Estratégia proporcional de testes
 
@@ -73,7 +73,9 @@ Os E2E criam namespace e portas próprios; não usam personaflow_demo do usuári
 
 Não buscar cobertura de linhas como substituto dessas propriedades. Testes de integração usam Postgres real para transação, unicidade e concorrência; mocks de Prisma não bastam. Testes fake provam comportamento do software, não permissões, entrega de webhooks ou políticas efetivamente aplicadas à conta.
 
-CI por PR configurado em `.github/workflows/ci.yml`: instalação pelo lockfile, geração Prisma, lint, tipos, unitários, serviço PostgreSQL 16/migração, integração e build. Sem Meta/VPS nem deploy automático. E2E, detector de secrets e revisão completa de licenças ficam para as tarefas pertinentes; não foram executados. O workflow ainda não rodou remotamente. A auditoria local de npm em 27/09/2026 encontrou quatro avisos altos na cadeia do Prisma 7.10.0 (`prisma`, `@prisma/config`, `deepmerge-ts`, `mysql2`). `npm audit --omit=dev` ainda reporta os quatro por causa do peer opcional de `@prisma/client`. A correção automática sugerida era downgrade major para Prisma 6.19.3, que exigiria revalidar o adaptador; não aplicá-la cegamente. Revisar antes de publicação.
+CI por PR configurado em `.github/workflows/ci.yml`: instalação pelo lockfile, geração Prisma, lint, tipos, unitários, PostgreSQL 16/migração, integração, preparação Chromium, E2E e build. Sem Meta/VPS nem deploy automático; workflow ainda não rodou remotamente. E2E local executado desde PF-014-L. Detector de secrets/revisão completa de licenças não implementados. Os quatro avisos altos do audit de 27/09 foram corrigidos e revalidados em 28/09; detalhes abaixo.
+
+Os arquivos de integração compartilham schema/filas e um teste instala trigger PostgreSQL temporário. Rodam sequencialmente (`--no-file-parallelism`); as concorrências essenciais permanecem em Promise.all dentro dos casos. A execução simultânea entre arquivos causou timeouts e shutdown bloqueado após ampliar o ledger; a rodada sequencial passou sem ampliar prazos ou remover asserções. Não confundir concorrência de fixtures com prova de concorrência dos serviços.
 
 ## Evidência de conclusão
 

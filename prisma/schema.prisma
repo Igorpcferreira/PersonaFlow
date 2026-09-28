@@ -16,12 +16,19 @@ model InstagramAccount {
   webhookAppAlias String?
   webhookGeneration Int?
   webhookFields String[]             @default([])
+  pausedAt       DateTime?            @db.Timestamptz(3)
   credential     AccountCredential?
   contacts       Contact[]
   conversations  Conversation[]
   messages       Message[]
   inboundEvents  InboundEvent[]
   oauthStates    MetaOAuthState[]
+  automations    Automation[]
+  deliveryIntents DeliveryIntent[]
+  deliveryAttempts DeliveryAttempt[]
+  syntheticEffects SyntheticEffect[]
+  limit          AccountLimit?
+  heartbeats     WorkerHeartbeat[]
 }
 
 model AccountCredential {
@@ -42,6 +49,7 @@ model Contact {
   accountId      String           @db.Uuid
   id             String           @default(uuid()) @db.Uuid
   igScopedUserId String
+  suppressedAt  DateTime?            @db.Timestamptz(3)
   account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   conversations  Conversation[]
 
@@ -53,9 +61,15 @@ model Conversation {
   accountId String           @db.Uuid
   id        String           @default(uuid()) @db.Uuid
   contactId String           @db.Uuid
+  control   String           @default("automatic")
+  controlVersion Int         @default(0)
+  status    String           @default("open")
+  note      String?
+  lastEligibleInboundAt DateTime? @db.Timestamptz(3)
   account   InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   contact   Contact          @relation(fields: [accountId, contactId], references: [accountId, id], onDelete: Cascade)
   messages  Message[]
+  intents   DeliveryIntent[]
 
   @@id([accountId, id])
 }
@@ -66,6 +80,11 @@ model Message {
   conversationId String           @db.Uuid
   externalId     String
   body           String?
+  direction      String           @default("inbound")
+  kind           String           @default("text")
+  echo           Boolean          @default(false)
+  occurredAt     DateTime          @default(now()) @db.Timestamptz(3)
+  receivedAt     DateTime          @default(now()) @db.Timestamptz(3)
   account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   conversation   Conversation     @relation(fields: [accountId, conversationId], references: [accountId, id], onDelete: Cascade)
 
@@ -84,6 +103,7 @@ model InboundEvent {
   payload    Json?
   processedAt DateTime?
   account    InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  intents    DeliveryIntent[]
 
   @@id([accountId, id])
   @@unique([accountId, externalId])
@@ -163,4 +183,95 @@ model MetaOAuthState {
   session    Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   @@index([accountId])
   @@index([sessionId])
+}
+
+model Automation {
+  accountId String @db.Uuid
+  id String @default(uuid()) @db.Uuid
+  name String
+  trigger String @default("comment")
+  mediaId String?
+  status String @default("draft")
+  revision Int @default(1)
+  config Json
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  intents DeliveryIntent[]
+  @@id([accountId, id])
+}
+
+model DeliveryIntent {
+  accountId String @db.Uuid
+  id String @default(uuid()) @db.Uuid
+  conversationId String @db.Uuid
+  eventId String? @db.Uuid
+  automationId String? @db.Uuid
+  automationRevision Int?
+  controlVersion Int
+  connectionGeneration Int
+  source String
+  effect String
+  idempotencyKey String
+  status String @default("pending")
+  body Json
+  deadline DateTime @db.Timestamptz(3)
+  nextAttemptAt DateTime? @db.Timestamptz(3)
+  reservedUntil DateTime? @db.Timestamptz(3)
+  acceptedId String?
+  reason String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [accountId, conversationId], references: [accountId, id], onDelete: Cascade)
+  event InboundEvent? @relation(fields: [accountId, eventId], references: [accountId, id])
+  automation Automation? @relation(fields: [accountId, automationId], references: [accountId, id])
+  attempts DeliveryAttempt[]
+  syntheticEffects SyntheticEffect[]
+  @@id([accountId, id])
+  @@unique([accountId, idempotencyKey])
+  @@index([accountId, status, nextAttemptAt])
+}
+
+model DeliveryAttempt {
+  accountId String @db.Uuid
+  id String @default(uuid()) @db.Uuid
+  intentId String @db.Uuid
+  number Int
+  status String @default("started")
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  intent DeliveryIntent @relation(fields: [accountId, intentId], references: [accountId, id], onDelete: Cascade)
+  effects SyntheticEffect[]
+  @@id([accountId, id])
+  @@unique([accountId, intentId, number])
+}
+
+model SyntheticEffect {
+  accountId String @db.Uuid
+  id String @default(uuid()) @db.Uuid
+  intentId String @db.Uuid
+  attemptId String @db.Uuid
+  acceptedAt DateTime @default(now()) @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  intent DeliveryIntent @relation(fields: [accountId, intentId], references: [accountId, id], onDelete: Cascade)
+  attempt DeliveryAttempt @relation(fields: [accountId, attemptId], references: [accountId, id], onDelete: Cascade)
+  @@id([accountId, id])
+}
+
+model AccountLimit {
+  accountId String @id @db.Uuid
+  quota Int @default(30)
+  used Int @default(0)
+  windowStartedAt DateTime @default(now()) @db.Timestamptz(3)
+  cooldownUntil DateTime? @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model WorkerHeartbeat {
+  accountId String @db.Uuid
+  kind String
+  seenAt DateTime @db.Timestamptz(3)
+  account InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@id([accountId, kind])
 }

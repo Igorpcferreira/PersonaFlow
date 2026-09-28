@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run tests/unit",
     "test:integration": "tsx scripts/test-integration.ts",
-    "test:integration:external": "vitest run tests/integration",
+    "test:integration:external": "vitest run tests/integration --no-file-parallelism",
     "build": "next build",
     "check": "node node_modules/eslint/bin/eslint.js . && node node_modules/typescript/bin/tsc --noEmit && node node_modules/vitest/vitest.mjs run tests/unit"
   },

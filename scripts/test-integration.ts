@@ -29,7 +29,7 @@ async function main() {
     if (!new URL(url).pathname.startsWith('/personaflow_test')) throw new Error('Exige banco personaflow_test*.');
     process.env.DATABASE_URL = url;
     runLocal('node_modules/tsx/dist/cli.mjs', ['scripts/migrate.ts']);
-    runLocal('node_modules/vitest/vitest.mjs', ['run', 'tests/integration']);
+    runLocal('node_modules/vitest/vitest.mjs', ['run', 'tests/integration', '--no-file-parallelism']);
     return;
   }
 
@@ -55,7 +55,7 @@ async function main() {
     process.env.DATABASE_URL = `postgresql://persona_test:${password}@127.0.0.1:${port}/personaflow_test`;
     parseDatabaseUrl(process.env.DATABASE_URL);
     runLocal('node_modules/tsx/dist/cli.mjs', ['scripts/migrate.ts']);
-    runLocal('node_modules/vitest/vitest.mjs', ['run', 'tests/integration']);
+    runLocal('node_modules/vitest/vitest.mjs', ['run', 'tests/integration', '--no-file-parallelism']);
   } finally {
     await postgres.stop().catch(() => undefined);
     delete process.env.DATABASE_URL;

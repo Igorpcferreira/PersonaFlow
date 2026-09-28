@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createBoss, INBOUND_QUEUE } from '../jobs/queue';
 import { TokenVault } from '../modules/accounts/token-vault';
+import { DELIVERY_QUEUE } from '../modules/delivery/ledger';
 import type { WebhookApp } from '../integrations/meta/webhook';
 import { getAuthRuntime } from './auth-runtime';
 
@@ -22,7 +23,7 @@ async function createRuntime() {
   const app: WebhookApp = { kind: 'synthetic', alias: 'simulation', secret: settings.PERSONAFLOW_WEBHOOK_SECRET,
     verifyToken: settings.PERSONAFLOW_WEBHOOK_VERIFY_TOKEN };
   const boss = createBoss();
-  try { await boss.start(); await boss.createQueue(INBOUND_QUEUE); }
+  try { await boss.start(); await boss.createQueue(INBOUND_QUEUE); await boss.createQueue(DELIVERY_QUEUE); }
   catch { await boss.stop().catch(() => undefined); throw new Error('Fila local indisponível.'); }
   return { ...auth, vault, app, boss };
 }
