@@ -61,6 +61,7 @@ export async function completeOAuth(db: Database, vault: TokenVault, provider: S
       expiresAt: new Date(Date.now() + grant.expiresIn * 1000), revokedAt: null, refreshLease: null, refreshLeasedUntil: null };
     await tx.accountCredential.upsert({ where: { accountId }, create: { accountId, ...data }, update: data });
     await tx.instagramAccount.update({ where: { id: accountId }, data: { connectionGeneration: generation, appScopedId: identity.id } });
+    await tx.deliveryIntent.updateMany({ where: { accountId, status: 'pending', connectionGeneration: { not: generation } }, data: { status: 'canceled', reason: 'connection_changed' } });
   });
 }
 
@@ -79,6 +80,7 @@ export async function revokeConnection(db: Database, accountId: string) {
     await lockAccount(tx, accountId);
     await tx.instagramAccount.update({ where: { id: accountId }, data: { connectionGeneration: { increment: 1 } } });
     await tx.accountCredential.updateMany({ where: { accountId }, data: { revokedAt: new Date(), refreshLease: null, refreshLeasedUntil: null } });
+    await tx.deliveryIntent.updateMany({ where: { accountId, status: 'pending' }, data: { status: 'canceled', reason: 'connection_changed' } });
   });
 }
 

@@ -45,7 +45,7 @@ Node.js 24 e npm 11 são pré-requisitos. As dependências diretas estão fixada
 | `npm test` | Implementado: configuração inválida e sanitização, sem rede Meta |
 | `npm run test:integration` | Implementado: PostgreSQL 16 efêmero local ou `TEST_DATABASE_URL` local, transação/fila/isolamento |
 | `npm run test:browser:install` | Implementado: Chromium/Playwright somente em .local-tools/playwright, sem instalação global |
-| `npm run test:e2e` | Implementado/executado: supervisor/banco próprios e seed repetido; Chromium valida login, shell A/B, inbox, controle manual e editor básico por reel. Aceita arquivo/grep para verificação focada. Resultados atuais no BACKLOG/STATUS |
+| `npm run test:e2e` | Implementado/executado: supervisor/banco próprios e seed repetido; Chromium valida login, shell A/B, inbox, controle manual, editor básico por reel e diagnóstico. Aceita arquivo/grep para verificação focada. Resultados atuais no BACKLOG/STATUS |
 | `npm run build` | Implementado: build sem migração/conexão/segredo; runtime de autenticação inicializado apenas em request |
 | `npm run check` | Implementado: lint, tipos e unitários; CI acrescenta integração e build |
 
@@ -60,6 +60,8 @@ Após `npm ci` e `npm run db:generate`, executar `npm run demo` e abrir http://1
 Em “Automações por reel”, escolha publicação fictícia e preencha nome, palavras/expressões, apresentação, mensagem final e link HTTP/HTTPS. Salve, confira a prévia e ative localmente. Simule um comentário com a palavra; atualize a inbox para observar a resposta privada única. Repetir o mesmo evento não cria efeito novo. Editar/salvar retorna a rascunho e cancela pendentes da revisão antiga. Resposta pública, botão e follow podem ser configurados no rascunho, mas ainda recusam ativação até seus handlers/testes PF-100/104-L. Campos começam vazios; nenhum texto fixo de exemplo é uma receita do usuário.
 
 A inicialização prepara A/B; `demo:seed` repete sem sobrescrever trabalho e `demo:stop`/Ctrl+C encerram. .local-postgres/demo contém configuração privada/banco persistente ignorados por Git; não imprimir valores nem apagar a pasta. Se houver run.lock, verificar supervisor antes de agir.
+
+Em “Diagnóstico”, atualize heartbeat (recente por 30 s), idades de entradas/intencões/jobs, conexão/expiração/subscription e limite/cooldown. Pause/retome a conta, aplique quota fictícia de 1–30 reservas por minuto ou simule expiração/revogação/reconexão. Só a conta selecionada muda; reservas usadas não são resetadas. Reconexão usa state/sessão e provider fake, cancela pendentes obsoletos e refaz inscrição sintética. Renovação respeita token válido emitido há pelo menos 24 h. Envio reservado pode estar em trânsito; unknown continua terminal após reconexão, sem botão/endpoint de retry. Limites/aceite representam a simulação, não a Meta.
 
 Os E2E criam namespace e portas próprios; não usam personaflow_demo do usuário. `npm run test:browser:install` prepara o navegador no projeto antes de `npm run test:e2e`. Executor espera a web e sempre solicita parada do supervisor; não usa reset/limpeza dos dados persistentes. CI inclui integração, preparação do browser, E2E e build; configuração remota ainda sem execução.
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import InboxPanel from './inbox-panel';
 import AutomationsPanel from './automations-panel';
+import DiagnosticsPanel from './diagnostics-panel';
 
 export type AccountSummary = { id: string; label: string; pausedAt: string | null };
 export function AccountChooser() {
@@ -47,7 +48,7 @@ function AccountView({ accountId }: { accountId: string }) {
       <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Inbox</a><a href="#automations">Automações</a><a href="#diagnostics">Diagnóstico</a></nav>
       <InboxPanel key={`inbox:${accountId}`} accountId={accountId} />
       <AutomationsPanel key={`automations:${accountId}`} accountId={accountId} />
-      <section className="panel" id="diagnostics"><h2>Diagnóstico</h2><p>{account.pausedAt ? 'Conta pausada.' : 'Conta fictícia disponível.'}</p></section>
+      <DiagnosticsPanel key={`diagnostics:${accountId}`} accountId={accountId} />
     </>}
   </main>;
 }

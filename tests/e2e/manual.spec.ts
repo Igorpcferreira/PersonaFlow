@@ -21,6 +21,8 @@ test('PF-022-L: assumir/enviar/retomar, replay único e aceito/incerto/falhou se
   await expect.poll(async () => (await (await page.request.get(`/api/accounts/${b.id}/inbox`)).json()).conversations.length).toBe(1);
   await page.getByRole('button', { name: 'Atualizar inbox' }).click();
   await page.getByRole('button', { name: /Visitante fictício/ }).click();
+  const initialList = await (await page.request.get(`/api/accounts/${b.id}/inbox`)).json();
+  const initialThread = await (await page.request.get(`/api/accounts/${b.id}/inbox/${initialList.conversations[0].id}`)).json();
   await page.getByLabel('Rascunho de mensagem').fill('Resposta manual de Jardim');
   await expect(page.getByRole('button', { name: 'Enviar simulado' })).toBeDisabled();
   await page.getByRole('button', { name: 'Assumir conversa' }).click();
@@ -32,11 +34,11 @@ test('PF-022-L: assumir/enviar/retomar, replay único e aceito/incerto/falhou se
   const body = sent.postDataJSON();
   await expect.poll(async () => {
     await page.getByRole('button', { name: 'Atualizar conversa' }).click();
-    return page.locator('.messages').getByText('Aceito pela simulação', { exact: true }).count();
+    return page.locator('.messages article').filter({ has: page.getByText('Resposta manual de Jardim', { exact: true }) }).getByText('Aceito pela simulação', { exact: true }).count();
   }).toBe(1);
   expect((await page.request.post(sent.url(), { headers: { Origin: origin }, data: body })).status()).toBe(202);
   const thread = await (await page.request.get(sent.url())).json();
-  expect(thread.intents.filter((intent: { source: string }) => intent.source === 'manual')).toHaveLength(1);
+  expect(thread.intents.filter((intent: { body: { text: string } }) => intent.body.text === 'Resposta manual de Jardim')).toHaveLength(1);
   expect((await page.request.post(sent.url(), { headers: { Origin: 'http://invalid.example' }, data: { action: 'resume' } })).status()).toBe(401);
   expect((await page.request.post(`/api/accounts/${a.id}/inbox/${thread.conversation.id}`, { headers: { Origin: origin }, data: { action: 'assume' } })).status()).toBe(404);
   for (const [outcome, text, label] of [['timeout', 'Resposta incerta fictícia', 'Incerto · não será reenviado'], ['rejected', 'Falha fictícia', 'Falhou na simulação']]) {
@@ -45,7 +47,7 @@ test('PF-022-L: assumir/enviar/retomar, replay único e aceito/incerto/falhou se
     await page.getByRole('button', { name: 'Enviar simulado' }).click();
     await expect.poll(async () => {
       await page.getByRole('button', { name: 'Atualizar conversa' }).click();
-      return page.locator('.messages').getByText(label, { exact: true }).count();
+      return page.locator('.messages article').filter({ has: page.getByText(text, { exact: true }) }).getByText(label, { exact: true }).count();
     }).toBe(1);
   }
   await expect(page.getByRole('button', { name: /Tentar novamente|Reenviar/i })).toHaveCount(0);
@@ -54,8 +56,10 @@ test('PF-022-L: assumir/enviar/retomar, replay único e aceito/incerto/falhou se
   await page.getByRole('button', { name: 'Retomar automação' }).click();
   await expect(page.getByRole('button', { name: 'Assumir conversa' })).toBeVisible();
   const final = await (await page.request.get(sent.url())).json();
-  expect(final.intents).toHaveLength(3);
-  expect(final.intents.map((intent: { status: string }) => intent.status).sort()).toEqual(['accepted', 'rejected', 'unknown']);
+  expect(final.intents).toHaveLength(initialThread.intents.length + 3);
+  const owned = final.intents.filter((intent: { body: { text: string } }) => ['Resposta manual de Jardim', 'Resposta incerta fictícia', 'Falha fictícia'].includes(intent.body.text));
+  expect(owned).toHaveLength(3);
+  expect(owned.map((intent: { status: string }) => intent.status).sort()).toEqual(['accepted', 'rejected', 'unknown']);
   expect(browserIssues).toEqual([]);
 });
 

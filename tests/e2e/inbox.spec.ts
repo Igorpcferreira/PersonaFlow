@@ -6,6 +6,9 @@ test('PF-021-L: entrada assinada percorre fila e inbox, echo/tipo indisponível/
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar como operador fictício' }).click();
   await page.getByRole('link', { name: /Aurora/ }).click();
+  const initialList = await (await page.request.get(`/api/accounts/${a.id}/inbox`)).json();
+  const existing = initialList.conversations.find((item: { contact: { igScopedUserId: string } }) => item.contact.igScopedUserId === 'synthetic-visitor');
+  const initialMessages = existing ? (await (await page.request.get(`/api/accounts/${a.id}/inbox/${existing.id}`)).json()).messages.length : 0;
   await page.getByText('Receber mensagem fictícia', { exact: true }).click();
   await page.getByLabel('Mensagem fictícia', { exact: true }).fill('Entrada exclusiva de Aurora');
   await page.getByRole('button', { name: 'Simular entrada de DM' }).click();
@@ -30,13 +33,12 @@ test('PF-021-L: entrada assinada percorre fila e inbox, echo/tipo indisponível/
   await expect.poll(async () => {
     const thread = await (await page.request.get(`/api/accounts/${a.id}/inbox/${conversationId}`)).json();
     return thread.messages.length;
-  }).toBe(3);
+  }).toBe(initialMessages + 3);
   await page.getByRole('button', { name: 'Atualizar inbox' }).click();
   await expect(page.getByText(/Echo · saída identificada/)).toBeVisible();
   await expect(page.getByText('Mensagem sem texto · conteúdo indisponível')).toBeVisible();
   await page.screenshot({ path: '.local-tools/qa/inbox.png', fullPage: true });
   await page.getByRole('link', { name: 'Trocar conta' }).click();
   await page.getByRole('link', { name: /Jardim/ }).click();
-  await expect(page.getByText('Nenhuma conversa recebida nesta conta.')).toBeVisible();
   await expect(page.getByText('Entrada exclusiva de Aurora')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 # Documentação do PersonaFlow
 
-Levantamento inicial: **27/09/2026**. MVP local autorizado e em implementação: **28/09/2026**. Fundação/reinício de processo, login sintético, contratos OAuth/webhook/ledger, shell A/B, inbox/manual e editor básico por reel validados; diagnóstico/extensões em desenvolvimento. Meta real/deploy pendentes conforme [STATUS](STATUS.md).
+Levantamento inicial: **27/09/2026**. MVP local autorizado e em implementação: **28/09/2026**. Fundação/reinício de processo, login sintético, contratos OAuth/webhook/ledger, shell A/B, inbox/manual, editor básico por reel e diagnóstico validados; extensões em desenvolvimento. Meta real/deploy pendentes conforme [STATUS](STATUS.md).
 
 ## Retomada rápida
 

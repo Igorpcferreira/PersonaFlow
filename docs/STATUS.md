@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L e PF-020–023-L básicos validados; PF-026-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L, PF-020–023-L básicos e PF-026-L validados; PF-100-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -25,7 +25,9 @@ PF-021-L validado: inbox persistente, thread paginada/ordenada, echo/tipos indis
 
 PF-022-L validado: assumir/retomar/manual pela UI/API, requestId escopado/persistido até confirmação, janela/controle no servidor e aceito/incerto/falhou sem retry unknown. Check (24), 37 integrações reais, 6 E2E + caso isolado de resposta perdida após commit, build aprovado. Lista de controle e screenshot revisados; console/pageerror sem erros.
 
-PF-023-L básico validado: editor/rascunho/prévia/ativação por reel, textos/termos/link editáveis, matcher Unicode, conflito/revisão/pausa/geração e decisão/intenção/job na transação da inbox. Check (26), 41 integrações PostgreSQL, E2E focado e build aprovados; screenshot/console/diff/links revisados. Resposta pública/botão/follow ainda recusam ativação até PF-100/104-L. Cache Next gerado com conteúdo duplicado foi preservado em QA e regenerado; rodada limpa passou. PF-026-L em andamento; goal completo ainda não alcançado.
+PF-023-L básico validado: editor/rascunho/prévia/ativação por reel, textos/termos/link editáveis, matcher Unicode, conflito/revisão/pausa/geração e decisão/intenção/job na transação da inbox. Check (26), 41 integrações PostgreSQL, E2E focado e build aprovados; screenshot/console/diff/links revisados. Resposta pública/botão/follow ainda recusam ativação até PF-100/104-L. Cache Next gerado com conteúdo duplicado foi preservado em QA e regenerado; rodada limpa passou.
+
+PF-026-L validado: diagnóstico sanitizado por conta, heartbeat/idades de fila/jobs, conexão/token/subscription, limite/cooldown/unknown terminal. Ações autenticadas/CSRF e cancelamento transacional de pendentes em expiração/revogação/reconexão; refresh mantém regra 24 h. Check (26), 45 integrações PostgreSQL, 10 E2E completos e build aprovados. Campo de limite bloqueado enquanto ação atualiza; screenshot/diff/links revisados. A limitada/alterada preserva B. PF-100-L em andamento; goal completo ainda não alcançado.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 
