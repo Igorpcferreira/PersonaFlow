@@ -7,6 +7,7 @@ import { lockConversation } from '../inbox/control';
 
 export const DELIVERY_QUEUE = 'delivery-intent';
 export const DAY = 24 * 60 * 60_000;
+export const simulationOutcomes = ['accepted', 'timeout', 'rejected', 'before-send'] as const;
 export const effects = ['private_reply', 'public_reply', 'button', 'automatic_dm', 'link', 'manual'] as const;
 export const deliveryBody = z.object({ text: z.string().min(1).max(2000),
   button: z.object({ title: z.string().min(1).max(80), payload: z.string().min(1).max(1000) }).optional(),
@@ -14,7 +15,7 @@ export const deliveryBody = z.object({ text: z.string().min(1).max(2000),
 }).strict();
 const input = z.object({ accountId: z.uuid(), conversationId: z.uuid(), eventId: z.uuid().optional(), anchorEventId: z.uuid().optional(),
   automationId: z.uuid().optional(), source: z.enum(['manual', 'automatic']), effect: z.enum(effects),
-  clientRequestId: z.uuid().optional(), body: deliveryBody });
+  clientRequestId: z.uuid().optional(), simulationOutcome: z.enum(simulationOutcomes).optional(), body: deliveryBody });
 export type IntentInput = z.infer<typeof input>;
 
 async function enqueue(tx: Prisma.TransactionClient, boss: PgBoss, accountId: string, intentId: string) {
@@ -49,8 +50,9 @@ export async function createIntent(db: Database, boss: PgBoss, value: IntentInpu
     const created = await tx.deliveryIntent.createMany({ data: [{ accountId: data.accountId, conversationId: data.conversationId,
       eventId: event?.id, automationId: automation?.id, automationRevision: automation?.revision,
       controlVersion: conversation.controlVersion, connectionGeneration: account.connectionGeneration,
-      source: data.source, effect: data.effect, idempotencyKey: key, body: data.body, deadline }], skipDuplicates: true });
+      source: data.source, effect: data.effect, idempotencyKey: key, body: data.body, deadline, simulationOutcome: data.simulationOutcome ?? 'accepted' }], skipDuplicates: true });
     const intent = await tx.deliveryIntent.findUniqueOrThrow({ where: { accountId_idempotencyKey: { accountId: data.accountId, idempotencyKey: key } } });
+    if (intent.conversationId !== data.conversationId) throw new Error('Pedido já pertence a outra conversa nesta conta.');
     if (created.count) await enqueue(tx, boss, data.accountId, intent.id);
     return intent;
   });

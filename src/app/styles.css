@@ -54,3 +54,11 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #397c6e; outline-
 .message p { white-space: pre-wrap; margin: 7px 0 0; }
 .message-meta { color: #697b7b; font-size: .75rem; }
 @media (max-width: 760px) { .inbox-grid { grid-template-columns: 1fr; } .conversation-list { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+.control-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.manual-send { display: flex; align-items: end; gap: 12px; margin-top: 16px; }
+.manual-send label { flex: 1; }
+.delivery-status { display: block; margin-top: 10px; font-size: .8rem; color: #3a6850; }
+.delivery-unknown { border: 1px solid #d0a859; background: #fff5dc !important; }
+.delivery-rejected, .delivery-blocked, .delivery-expired { background: #fff0e8 !important; }
+.delivery-unknown .delivery-status { color: #866221; }
+@media (max-width: 560px) { .manual-send { flex-direction: column; align-items: stretch; } }

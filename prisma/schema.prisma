@@ -216,6 +216,7 @@ model DeliveryIntent {
   idempotencyKey String
   status String @default("pending")
   body Json
+  simulationOutcome String @default("accepted")
   deadline DateTime @db.Timestamptz(3)
   nextAttemptAt DateTime? @db.Timestamptz(3)
   reservedUntil DateTime? @db.Timestamptz(3)

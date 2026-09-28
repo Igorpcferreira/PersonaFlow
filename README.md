@@ -2,7 +2,7 @@
 
 Fundação local de uma ferramenta auto-hospedada, exclusivamente para Instagram, planejada para duas contas independentes.
 
-**Estado: contratos backend, shell A/B e inbox sintética validados em 28/09/2026; PF-022-L em andamento.** `npm run demo` inicia banco/web/worker, prepara Aurora/Jardim e permite entrar como operador fictício e simular uma entrada de DM na inbox; `npm run demo:seed` repete sem sobrescrever trabalho e `npm run demo:stop` encerra preservando dados. Controle manual/editor em desenvolvimento. Contas/apps reais, Meta, VPS e deploy fora do escopo.
+**Estado: contratos backend, shell A/B, inbox e envio manual sintético validados em 28/09/2026; PF-023-L em andamento.** `npm run demo` inicia banco/web/worker, prepara Aurora/Jardim e permite entrar como operador fictício, simular DM, assumir/enviar/retomar e observar aceito/incerto/falhou. `npm run demo:seed` repete sem sobrescrever trabalho e `npm run demo:stop` encerra preservando dados. Editor/diagnóstico em desenvolvimento. Contas/apps reais, Meta, VPS e deploy fora do escopo.
 
 Comece pelo [índice da documentação](docs/README.md). Para retomar com um agente, leia [AGENTS.md](AGENTS.md), [estado atual](docs/STATUS.md), [handoff](docs/HANDOFF.md) e [backlog](docs/BACKLOG.md).
 

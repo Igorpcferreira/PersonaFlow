@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L e PF-020/021-L validados; PF-022-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L e PF-020–022-L validados; PF-023-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -21,7 +21,9 @@ PF-017-L validado: ledger por efeito, reserva serializada, revalidação de praz
 
 PF-020-L validado: shell com Aurora/Jardim, rotas/APIs autenticadas, seleção explícita, no-store/abort/componente e rascunho por conta. Seed inicial/repetido preserva dados, `demo:seed` implementado/executado duas vezes pelo E2E. Check (24), 31 integrações reais, 4 E2E e build aprovados; screenshot inspecionado.
 
-PF-021-L validado: inbox persistente, thread paginada/ordenada, echo/tipos indisponíveis e histórico parcial. Janela monotônica, data futura limitada e geração obsoleta sem elegibilidade. UI simula DM via bytes assinados/webhook/fila; replay sem duplicação, API cruzada/CSRF negados. Check (24), 34 integrações reais, 5 E2E e build aprovados; screenshot/diff/links revisados. PF-022-L em andamento para controle/envio manual; editor/diagnóstico ainda pendentes.
+PF-021-L validado: inbox persistente, thread paginada/ordenada, echo/tipos indisponíveis e histórico parcial. Janela monotônica, data futura limitada e geração obsoleta sem elegibilidade. UI simula DM via bytes assinados/webhook/fila; replay sem duplicação, API cruzada/CSRF negados. Check (24), 34 integrações reais, 5 E2E e build aprovados; screenshot/diff/links revisados.
+
+PF-022-L validado: assumir/retomar/manual pela UI/API, requestId escopado/persistido até confirmação, janela/controle no servidor e aceito/incerto/falhou sem retry unknown. Check (24), 37 integrações reais, 6 E2E + caso isolado de resposta perdida após commit, build aprovado. Lista de controle e screenshot revisados; console/pageerror sem erros. PF-023-L em andamento para editor por reel/receita; diagnóstico e extensões ainda pendentes.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 

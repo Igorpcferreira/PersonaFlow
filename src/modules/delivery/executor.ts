@@ -103,6 +103,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
         status, acceptedId, reason, reservedUntil: null, nextAttemptAt: status === 'pending' ? delayUntil : null,
       } });
       if (rateLimited) await tx.accountLimit.update({ where: { accountId: context.accountId }, data: { cooldownUntil: delayUntil } });
+      if (status === 'accepted') await tx.conversation.update({ where: { accountId_id: { accountId: context.accountId, id: intent.conversationId } }, data: { lastActivityAt: new Date() } });
     });
   }
   return db.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId: context.accountId, id: context.intentId } } });

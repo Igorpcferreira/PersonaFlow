@@ -28,5 +28,8 @@ export async function conversationThread(db: Database, accountId: string, conver
   ] } : {}) }, orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }], take: 51,
   select: { id: true, accountId: true, body: true, direction: true, kind: true, echo: true, occurredAt: true } });
   const items = messages.slice(0, 50);
-  return { conversation, messages: items.toReversed(), nextCursor: messages.length > 50 ? items.at(-1)!.id : null, partialHistory: true };
+  const intents = await db.deliveryIntent.findMany({ where: { accountId, conversationId }, orderBy: { createdAt: 'desc' }, take: 100,
+    select: { id: true, accountId: true, body: true, effect: true, source: true, status: true, reason: true, createdAt: true } });
+  const windowOpen = Boolean(conversation.lastEligibleInboundAt && conversation.lastEligibleInboundAt.getTime() + 24 * 60 * 60_000 > Date.now());
+  return { conversation, windowOpen, messages: items.toReversed(), intents: intents.toReversed(), nextCursor: messages.length > 50 ? items.at(-1)!.id : null, partialHistory: true };
 }

@@ -23,6 +23,7 @@ export async function operatorContext(request: Request, accountId?: string, writ
 }
 export function requestError(error: unknown) {
   return Response.json({ error: error instanceof RequestRejected && error.status === 401 ? 'Entre como operador local para continuar.' :
-    error instanceof RequestRejected && error.status === 404 ? 'Recurso não encontrado nesta conta.' : 'Não foi possível concluir a ação local.' },
+    error instanceof RequestRejected && error.status === 404 ? 'Recurso não encontrado nesta conta.' :
+    error instanceof RequestRejected && error.status === 409 ? 'Assuma a conversa e confira uma interação recebida nas últimas 24 horas.' : 'Não foi possível concluir a ação local.' },
   { status: error instanceof RequestRejected ? error.status : 503, headers: { 'Cache-Control': 'no-store' } });
 }

@@ -37,7 +37,7 @@ async function main() {
       const seeded = spawnSync(process.execPath, ['--import', 'tsx', resolve('scripts/demo.ts'), '--seed'], { env, stdio: 'ignore', windowsHide: true });
       if (seeded.status !== 0) throw new Error('Seed repetido E2E não confirmou.');
     }
-    const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test'], { env, stdio: 'inherit', windowsHide: true });
+    const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', ...process.argv.slice(2)], { env, stdio: 'inherit', windowsHide: true });
     completed = result.status === 0;
   } finally {
     if (supervisor.exitCode === null && supervisor.signalCode === null) {
