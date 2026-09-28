@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L e PF-020-L validados; PF-021-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **28/09/2026**. Fase: **MVP local autorizado; fundação, PF-014–017-L e PF-020/021-L validados; PF-022-L em andamento.** Pedido anexado do usuário autoriza correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
 
 ## Implementado e validado localmente
 
@@ -19,7 +19,9 @@ PF-016-L validado: webhook local assinado nos bytes, app único, subscription si
 
 PF-017-L validado: ledger por efeito, reserva serializada, revalidação de prazo/janela/geração/token/revisão/controle/limite, retries antes do envio comprovado e unknown terminal. Crash de processo após aceite fake persistido: novo PID, uma tentativa/efeito e zero novas chamadas. Manutenção/heartbeat por conta. Check (24 unitários), 30 integrações reais, 2 E2E e build aprovados.
 
-PF-020-L validado: shell com Aurora/Jardim, rotas/APIs autenticadas, seleção explícita, no-store/abort/componente e rascunho por conta. Seed inicial/repetido preserva dados, `demo:seed` implementado/executado duas vezes pelo E2E. Check (24), 31 integrações reais, 4 E2E e build aprovados; screenshot inspecionado. PF-021-L em andamento: inbox persistente/thread/ordem/paginação/echo; editor e ações ainda pendentes.
+PF-020-L validado: shell com Aurora/Jardim, rotas/APIs autenticadas, seleção explícita, no-store/abort/componente e rascunho por conta. Seed inicial/repetido preserva dados, `demo:seed` implementado/executado duas vezes pelo E2E. Check (24), 31 integrações reais, 4 E2E e build aprovados; screenshot inspecionado.
+
+PF-021-L validado: inbox persistente, thread paginada/ordenada, echo/tipos indisponíveis e histórico parcial. Janela monotônica, data futura limitada e geração obsoleta sem elegibilidade. UI simula DM via bytes assinados/webhook/fila; replay sem duplicação, API cruzada/CSRF negados. Check (24), 34 integrações reais, 5 E2E e build aprovados; screenshot/diff/links revisados. PF-022-L em andamento para controle/envio manual; editor/diagnóstico ainda pendentes.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 

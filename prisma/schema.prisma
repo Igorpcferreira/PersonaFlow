@@ -66,12 +66,14 @@ model Conversation {
   status    String           @default("open")
   note      String?
   lastEligibleInboundAt DateTime? @db.Timestamptz(3)
+  lastActivityAt DateTime @default(now()) @db.Timestamptz(3)
   account   InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   contact   Contact          @relation(fields: [accountId, contactId], references: [accountId, id], onDelete: Cascade)
   messages  Message[]
   intents   DeliveryIntent[]
 
   @@id([accountId, id])
+  @@unique([accountId, contactId])
 }
 
 model Message {
