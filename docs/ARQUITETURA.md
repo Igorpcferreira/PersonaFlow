@@ -1,6 +1,6 @@
 # Arquitetura proposta
 
-Estado: proposta para o produto; o recorte local de bootstrap, fila e modelo de contas de PF-010–012 está implementado e testado. Módulos de Meta, envio, autenticação e interface funcional continuam planejados. Decisões em [ADRs](decisions/README.md); requisitos externos em [VIABILIDADE](VIABILIDADE.md).
+Estado: arquitetura do produto real proposta; recortes locais PF-010–012, PF-014–017-L, PF-020–026-L e PF-100/104-L implementados/testados. OAuth/login/webhook/transportes atuais são sintéticos, sem HTTP Meta/GitHub. Interface A/B, receitas, organização/métricas e diagnóstico validados. Diagramas de HTTPS/Meta e operação em containers descrevem o futuro, não um deploy atual. Decisões em [ADRs](decisions/README.md); requisitos externos em [VIABILIDADE](VIABILIDADE.md).
 
 Integração: um app Meta operacional com Instagram Login e duas conexões independentes, conforme [ADR-004](decisions/004-onboarding-meta-e-gate.md). Credenciais/callbacks por ambiente não se confundem com isolamento entre contas. O gate de entrega real, inclusive a divergência D-META-01 sobre webhooks em Standard Access, está em [META_ONBOARDING](META_ONBOARDING.md).
 
@@ -12,9 +12,9 @@ Manter a família de ferramentas do OpenReply reduz custo de adaptação. PF-010
 
 pg-boss oferece jobs transacionais, retry e agendamento no PostgreSQL já necessário ([documentação oficial](https://pgboss.io/), consulta 27/09/2026). A economia é remover Redis e a publicação entre dois sistemas. Ainda há custo de tabelas, vacuum, pooling e concorrência. PF-011 validou o adaptador transacional Prisma/pg-boss nas versões fixadas com PostgreSQL 16 real; monitorar compatibilidade em atualizações. Não escrever uma fila genérica própria nem usar tarefas em memória. Se a integração falhar no futuro, registrar ADR antes de reconsiderar BullMQ; não adicionar Redis silenciosamente.
 
-Sem cache externo, broker, armazenamento de mídia, analytics externo ou serviço de IA no MVP. UI consulta a base local com polling moderado; a sincronização com a Meta é separada, paginada e limitada. WebSocket não é necessário para duas contas.
+Sem cache externo, broker, armazenamento de mídia, analytics externo ou serviço de IA no MVP. A UI local usa atualização manual. Worker faz manutenção de intenções/heartbeat, sem polling de perfil. Sincronização Meta real continua proposta, paginada e limitada.
 
-Autenticação do operador separada do OAuth Instagram: Better Auth foi selecionada na [ADR-005](decisions/005-autenticacao-administrativa.md) para PF-014, com GitHub OAuth e allowlist por ID imutável, sessões persistidas no banco, um operador e cadastro público bloqueado. Evita operar email transacional e senha própria. A biblioteca ainda não foi instalada nem a autenticação implementada. Se o usuário não aceitar dependência de GitHub para login, revisar esta parte, sem mudar o modelo de contas.
+Autenticação do operador separada do OAuth Instagram: Better Auth 1.7.6/Prisma implementada em PF-014-L, allowlist por ID imutável, sessões PostgreSQL, logout/CSRF/state/PKCE. Provedor local-demo fictício; GitHub declarado com placeholders e bloqueado. Login GitHub real permanece pendente conforme [ADR-005](decisions/005-autenticacao-administrativa.md).
 
 ```mermaid
 flowchart LR
@@ -47,12 +47,13 @@ Contratos conceituais:
 | InstagramAccount | ID local, `user_id` profissional único, `id` app-scoped separado, app/ambiente, username, rótulo, status, subscription, pausa global |
 | AccountCredential | Uma conta, token cifrado, versão de chave, escopos, vencimento e geração da conexão |
 | Contact | `UNIQUE(accountId, igScopedUserId)`; sem deduplicação entre contas |
-| Conversation | accountId, contactId, ID externo, aberta/resolvida, manual/automático, última entrada elegível, versão do controle |
+| Conversation | accountId, contactId, aberta/resolvida/nota, manual/automático, última entrada elegível, versões separadas de controle/organização |
 | Message | accountId, conversationId, ID externo único na conta, direção, tipo, timestamps; conteúdo sujeito à retenção |
 | Automation | accountId, tipo, post/reel específico ou DM, palavras, resposta, revisão, rascunho/ativa/pausada |
 | InboundEvent | accountId, tipo, externalId único por conta/tipo, occurredAt, recebido/processado, payload mínimo |
 | DeliveryIntent | accountId, evento/ação manual, conversa, regra/revisão, status, prazo, idempotencyKey e resultado |
 | DeliveryAttempt | intenção, tentativa, início/fim, classe de resultado, requestId externo quando disponível; sem tokens |
+| SequenceRun / SyntheticProfile | Recorte local: comentário/interação, revisão/geração/controle, consentimento, follow true/false/unknown e fixture por conta/contato; link único |
 | OperationalEvent | accountId opcional só para incidentes globais, severidade, código, correlação e resolução |
 
 Toda relação entre dados de conta usa chave estrangeira composta `(accountId, entityId)` ou restrição equivalente. Isso impede vincular uma mensagem da conta A ao contato B mesmo com bug na aplicação. Testes negativos de acesso continuam obrigatórios. RLS pode ser defesa futura; não depender de RLS mal configurada no pool nem criar um banco por conta.
@@ -76,7 +77,7 @@ Na conexão, conciliar o `user_id` retornado pela Meta com `entry.id` do evento 
 
 Chaves propostas: private reply `accountId + commentId + private_reply`, independente da automação; resposta DM `accountId + inboundMid + automatic_reply`; ação manual `accountId + clientRequestId`, gerado uma vez e reutilizado no retry do navegador. ID de job é proteção adicional, nunca substitui a unicidade de negócio no banco.
 
-Estados: `pending → sending → accepted | rejected | unknown`; `pending → blocked | canceled | expired`. Somente rejeição explicitamente transitória pode retornar a pending. Reservar intenção e tentativa atomicamente antes da chamada externa. Um envio `sending` cujo worker morreu passa a `unknown`, nunca automaticamente a pending.
+Estados: `pending → sending → accepted | rejected | unknown`; `pending → blocked | canceled | expired`. No executor local, somente falha comprovada antes do envio permite retry limitado; rejeição confirmada e unknown são terminais. Reservar intenção e tentativa atomicamente antes da chamada fake. Sending órfão passa a unknown, nunca automaticamente a pending.
 
 **Não é possível prometer exactly-once entre PostgreSQL e Meta sem idempotência externa confirmada.** Se a Meta aceitou a mensagem e a conexão caiu antes da resposta, o servidor não sabe se deve repetir. Escolha do produto: evitar duplicidade, parando em resultado desconhecido; reconciliar por ID/echo/histórico quando houver prova inequívoca. Sem prova, exibir revisão manual. Não inferir entrega apenas por texto parecido nem liberar botão “tentar novamente” irrestrito.
 

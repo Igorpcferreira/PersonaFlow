@@ -1,10 +1,10 @@
 # ADR-005 — Biblioteca para autenticação administrativa
 
-Data: 27/09/2026; autorização local ampliada em 28/09/2026. Estado: selecionada para PF-014; PF-014-L autorizado, implementação ainda pendente. Uso de GitHub aceito em 27/09/2026; sem criação de app/credenciais ou acesso real autorizado.
+Data: 27/09/2026; atualização local em 28/09/2026. Estado: adotada/validada em PF-014-L com provedor fictício. GitHub real aceito como escolha em 27/09, mas criação de app/credenciais ou acesso real não autorizados/implementados.
 
-Escolha: **Better Auth**, com adaptador Prisma e provedor GitHub OAuth. O usuário aceitou GitHub como login administrativo. A documentação oficial mantém integração com Next.js e Prisma 7. Fixar a versão apenas quando PF-014 for autorizada; não instalar uma biblioteca de autenticação sem uso na fundação local.
+Escolha: **Better Auth 1.7.6**, com adaptador Prisma. GitHub é a escolha para login administrativo futuro; local-demo é o único provedor habilitado na demonstração. Integração Next.js/Prisma validada localmente conforme o recorte abaixo.
 
-Motivo: versão estável e documentação de integração atuais, separação do login administrativo em relação ao OAuth do Instagram. PF-014 ainda precisa provar allowlist por ID imutável, sessão, logout e CSRF. Esta seleção não autoriza conexão ao GitHub ou criação de credenciais.
+Motivo: separar login administrativo do OAuth Instagram, com sessões persistentes e allowlist por ID. Allowlist/sessão/logout/CSRF/state/PKCE comprovados no recorte local; conexão GitHub e credenciais externas continuam fora do escopo.
 
 Fontes consultadas em 27/09/2026: [integração Next.js](https://better-auth.com/docs/integrations/next), [adaptador Prisma](https://better-auth.com/docs/adapters/prisma), [instalação](https://better-auth.com/docs/installation).
 

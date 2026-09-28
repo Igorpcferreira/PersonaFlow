@@ -39,4 +39,5 @@ jobs:
       - run: npm run test:integration
       - run: npm run test:browser:install
       - run: npm run test:e2e
+      - run: npm run test:restart
       - run: npm run build
