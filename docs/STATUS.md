@@ -1,6 +1,6 @@
 # Estado atual
 
-Atualizado em **28/09/2026**. Fase: **MVP local autorizado concluído e validado.** Correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L completos com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy/push e custos novos fora do escopo.
+Atualizado em **29/09/2026**. Fase: **MVP local autorizado concluído e validado.** Correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L completos com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy e custos novos fora do escopo; push autorizado pelo pedido de 29/09.
 
 ## Implementado e validado localmente
 
@@ -37,7 +37,7 @@ PF-024-L validado: DM/story textuais no editor/matcher, echo/sem texto ignorados
 
 PF-025-L validado: aberta/resolvida/notas versionadas, filtros de estado/manual/datas/busca, cursor por conta/filtro e métricas por intenção. Datas de criação/recebimento, tentativas e denominador explicitados. Geração/check (27), 70 integrações PostgreSQL, 14 E2E completos e build aprovados; screenshot/diff/console revisados.
 
-Fechamento após npm ci: geração/check (27), 70 integrações PostgreSQL reais, 14 E2E, test:restart e build aprovados. Restart real com PIDs distintos preserva sessão/regras/notas/controles/sequência, cinco tentativas/efeitos e unknown terminal após replay/seed. Demo padrão servida HTTP 200, API sem sessão 401, seed/stop aprovados e banco preservado. Audit completo/omit-dev zero; setup/migração sem URL recusados. Serviços encerrados, sem run.lock; diff/22 Markdown/arquivos privados revisados. Git local sem remote/push. Goal alcançado; nenhuma nova fase iniciada.
+Fechamento após npm ci: geração/check (27), 70 integrações PostgreSQL reais, 14 E2E, test:restart e build aprovados. Restart real com PIDs distintos preserva sessão/regras/notas/controles/sequência, cinco tentativas/efeitos e unknown terminal após replay/seed. Demo padrão servida HTTP 200, API sem sessão 401, seed/stop aprovados e banco preservado. Audit completo/omit-dev zero; setup/migração sem URL recusados. Serviços encerrados, sem run.lock; diff/22 Markdown/arquivos privados revisados. Em 29/09, compartilhamento do Git local solicitado pelo usuário para continuidade do sócio, com destino `Igorpcferreira/PersonaFlow` (público); validação de produto permanece apenas local. Nenhuma nova fase iniciada.
 
 **Validação local:** comandos e PostgreSQL reais conforme acima. **Providers:** login sintético Better Auth validado sem rede; GitHub/Meta reais pendentes. **CI remoto:** workflow inclui preparação do navegador/E2E, sem execução remota. **Meta real:** não implementada/testada; nenhum gate externo concluído por fixtures.
 

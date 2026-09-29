@@ -1,12 +1,12 @@
 # Handoff
 
-Atualizado em **28/09/2026**. **Goal do MVP local concluído.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização foi concedida pelo pedido anexado do usuário, registrado em PF-003/PROXIMA_SESSAO; não pelo backlog.
+Atualizado em **29/09/2026**. **Goal do MVP local concluído.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização foi concedida pelo pedido anexado do usuário, registrado em PF-003/PROXIMA_SESSAO; não pelo backlog.
 
 ## Estado confirmado
 
 Correções PF-010–012/PF-011-R e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L implementados e validados localmente. Dois contextos fictícios: Aurora/Jardim. Better Auth/sessão PostgreSQL, OAuth/tokens e webhook sintéticos, pg-boss/ledger/executor fake, inbox/manual, editor por reel/DM/story, pública/botão/seguir/link, organização/notas/filtros/métricas e diagnóstico. Nove migrações; a última acrescenta organizationVersion.
 
-Nada importado do OpenReply. Git local preserva a base preexistente e as entregas em commits, sem remote/push. Nenhum app/conta real, envio externo, VPS/DNS, produção/deploy ou custo novo. Os pais/gates PF-001/002/002-B, D-META-01 e PF-013 continuam pendentes; fixtures não comprovam Meta/GitHub reais.
+Nada importado do OpenReply. Git local preserva a base preexistente e as entregas em commits. Em 29/09, o usuário solicitou publicar tudo para continuidade do sócio no repositório público `Igorpcferreira/PersonaFlow`. Nenhum app/conta real, envio externo, VPS/DNS, produção/deploy ou custo novo. Os pais/gates PF-001/002/002-B, D-META-01 e PF-013 continuam pendentes; fixtures não comprovam Meta/GitHub reais.
 
 ## Evidências finais após reinstalação
 
