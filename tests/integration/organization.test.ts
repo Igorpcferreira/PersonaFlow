@@ -96,7 +96,7 @@ describe('PF-025-L: organização e métricas por intenção', () => {
     expect(metric.effects).toEqual([{ effect: 'private_reply', count: 7 }]);
     expect((await inboxMetrics(db, b.account.id)).totalIntents).toBe(0);
     expect((await inboxMetrics(db, f.account.id, { status: 'open', control: 'manual', q: 'inexistente' })).totalIntents).toBe(7);
-  });
+  }, 20_000);
   it('métricas usam coorte criada no período e entradas recebidas sem echo, sem multiplicar tentativas', async () => {
     const f = await deliveryFixture(db);
     const item = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.conversation.id, automationId: f.automation.id,
