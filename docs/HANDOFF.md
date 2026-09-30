@@ -1,6 +1,10 @@
 # Handoff
 
-Atualizado em **29/09/2026**. **Goal do MVP local concluído.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização foi concedida pelo pedido anexado do usuário, registrado em PF-003/PROXIMA_SESSAO; não pelo backlog.
+Atualizado em **30/09/2026**. **Goal do MVP local concluído; Pedro pediu continuidade para uso real da Kyber.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização local anterior foi registrada em PF-003/PROXIMA_SESSAO; o novo pedido de 30/09 amplia o objetivo, mas envio externo depende de fluxo e conta concretos confirmados.
+
+No checkout atual, branch `codex/personaflow-integration-readiness`, o painel recebeu menu lateral no desktop e navegação em duas linhas no celular, sem trocar contratos das quatro seções. A inspeção visual foi feita em 30/09 em 1440×900 e 390×844; capturas privadas em `.local-tools/qa/`. `npm run check` passou com 27 unitários, `npm run test:e2e` passou com 14 jornadas após instalar o Chromium, e `npm run build` passou após o ajuste final de CSS. O demo foi parado, dados fictícios preservados. CI foi corrigido para escutar `master` e `main`, mas não foi executado remotamente. O acesso SSH à VPS falhou duas vezes com timeout na porta 22, portanto não houve inventário nem deploy.
+
+Próximo trabalho independente: implementar e testar adaptadores oficiais Meta sem ativar envio, revisar o fluxo de onboarding com base em permissões realmente disponíveis, preparar pacote de produção isolado e retenção/exclusão. Antes de conectar/ativar: confirmar conta inicial, texto e continuidade após a primeira DM, titularidade do app Meta e acesso ao repositório do Igor. O Reels externo de referência não carregou na inspeção web; a documentação e os exemplos de fluxo já registrados no produto foram consultados. Não confundir simulação local, aceite da API, DM recebida e lead no CRM.
 
 ## Estado confirmado
 

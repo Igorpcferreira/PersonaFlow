@@ -4,6 +4,8 @@
 
 A autorização vigente, ampliada pelo pedido anexado do usuário em **28/09/2026** e registrada em PF-003, inclui correções de PF-010–012 e implementação/validação dos recortes **locais** PF-014–017-L, PF-020–026-L, PF-100-L e PF-104-L. Permite código, dependências fixadas do projeto, testes, serviços isolados, migrações locais e Git local sem push. A interface com duas contas fictícias pode preceder PF-013 por autorização expressa; isso não conclui os pais nem os gates Meta. Consultas a documentação pública e downloads de dependências estão permitidos. Não há autorização para contas reais, integração externa do produto, criação de aplicativos externos, envio real, VPS, DNS, produção, deploy, push ou custos novos. O backlog não autoriza execução por si só; novas fases exigem autorização específica.
 
+**Atualização de 30/09/2026:** Pedro pediu nesta conversa que o projeto seja concluído para uso da Kyber e hospedagem na VPS, incluindo melhorias da interface. O parágrafo anterior descreve a autorização histórica do MVP local; o pedido atual permite preparar integração e implantação dentro das escolhas confirmadas. Antes de conectar uma conta ou ativar envios reais, confirmar conta, fluxo, permissões e conteúdo concreto. Testes com interlocutores controlados são separados da ativação para o público. Não contratar serviços nem alterar outros projetos como atalho.
+
 Ordem de retomada: este arquivo → `docs/README.md` → `docs/STATUS.md` → `docs/HANDOFF.md` → `docs/BACKLOG.md` → decisão e documento relacionados à tarefa. Não reler tudo sem necessidade.
 
 ## Ciclo de trabalho

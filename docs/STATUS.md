@@ -2,6 +2,14 @@
 
 Atualizado em **29/09/2026**. Fase: **MVP local autorizado concluído e validado.** Correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L completos com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy e custos novos fora do escopo; push autorizado pelo pedido de 29/09.
 
+## Retomada por Pedro em 30/09/2026
+
+Pedro informou nesta conversa que Igor lhe passou o repositório para concluir o produto e operar o fluxo de comentário em Reels da Kyber para pedido de prévia. Esse pedido amplia o objetivo anterior, que se limitava à simulação local. Não transforma a simulação em integração real nem confirma conta, permissões, conteúdo de mensagem ou implantação. As decisões sobre a primeira conta e a continuidade automática estão sendo confirmadas separadamente.
+
+Inspeção do checkout público `2555234` em 30/09: todas as rotas locais de conexão, autenticação, webhook e transporte ainda aceitam exclusivamente `synthetic` ou `local-demo`; não há adaptador Meta real, login de operador externo, configuração de produção, pacote de deploy, retenção/exclusão operacional ou testes com conta profissional. O workflow de CI escutava apenas push em `main`, enquanto o remoto usa `master`; corrigido no branch local `codex/personaflow-integration-readiness` para ambas as branches. O GitHub Actions público não mostrou execução, e a consulta autenticada pela CLI falhou por conectividade, portanto CI remoto não está validado. A tentativa de SSH à VPS a partir deste PC expirou na porta 22; capacidade e implantação não foram inspecionadas.
+
+A navegação do painel local foi reorganizada com menu lateral no desktop e duas linhas de navegação no celular, mantendo as quatro seções e a indicação explícita de simulação. `npm ci`, `npm run db:generate`, `npm run check` (27 unitários) e `npm run build` passaram antes do ajuste; `npm run check` e `npm run build` passaram novamente depois. A primeira execução E2E falhou apenas por falta do Chromium do Playwright neste checkout; após instalar o navegador, a repetição passou com 14/14 jornadas. A nova aparência foi inspecionada visualmente em 1440×900 e 390×844; o primeiro layout cortava “Diagnóstico” no celular, corrigido com navegação em duas linhas. O build passou após o último ajuste de CSS.
+
 ## Implementado e validado localmente
 
 - PF-010–012: Next.js/TypeScript/Node 24, Prisma 7.10.0/PostgreSQL 16/pg-boss 12.35.0. URLs apenas loopback personaflow_*, sem query/fragmento e com caminho estrito. FKs compostas e consultas escopadas, duas contas fictícias e credenciais independentes. Evento/job atômicos no mesmo banco.
