@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrisma } from '../../src/shared/db';
 import { createBoss, INBOUND_QUEUE } from '../../src/jobs/queue';
@@ -10,8 +10,8 @@ import { syntheticBatch } from '../fixtures/meta/batch';
 const db = createPrisma();
 const boss = createBoss();
 const app: WebhookApp = { kind: 'synthetic', alias: 'simulation', secret: randomBytes(32).toString('hex'), verifyToken: randomBytes(32).toString('hex') };
-async function account() {
-  const account = await db.instagramAccount.create({ data: { professionalId: `synthetic-${randomUUID()}`, label: 'Conta fictícia', connectionGeneration: 1,
+async function account(professionalId = `synthetic-${randomUUID()}`) {
+  const account = await db.instagramAccount.create({ data: { professionalId, label: 'Conta fictícia', connectionGeneration: 1,
     credential: { create: { ciphertext: randomBytes(32), keyVersion: 1, generation: 1 } } } });
   await subscribeSyntheticAccount(db, account.id, app);
   return account;
@@ -28,6 +28,23 @@ beforeAll(async () => { await boss.start(); await boss.createQueue(INBOUND_QUEUE
 afterAll(async () => { await boss.stop(); await db.$disconnect(); });
 
 describe('PF-016-L: webhook durável PostgreSQL/fila reais', () => {
+  it('lote assinado pela Meta usa o mesmo commit e não expõe contagens no ACK público', async () => {
+    const a = await account(randomBytes(8).readBigUInt64BE(0).toString());
+    const other = await account(randomBytes(8).readBigUInt64BE(0).toString());
+    const meta: WebhookApp = { ...app, kind: 'meta', pilotProfessionalId: a.professionalId };
+    const batch = syntheticBatch([a.professionalId, other.professionalId], `meta-${randomUUID()}`);
+    const bytes = Buffer.from(JSON.stringify(batch));
+    const signature = `sha256=${createHmac('sha256', meta.secret).update(bytes).digest('hex')}`;
+    const makeRequest = () => new Request('https://example.invalid/api/meta/webhook', { method: 'POST', body: bytes,
+      headers: { 'Content-Type': 'application/json', 'x-hub-signature-256': signature } });
+    const first = await handleWebhookPost(makeRequest(), db, boss, meta);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ received: true });
+    expect(await db.inboundEvent.count({ where: { accountId: a.id } })).toBe(2);
+    expect(await db.inboundEvent.count({ where: { accountId: other.id } })).toBe(0);
+    expect((await handleWebhookPost(makeRequest(), db, boss, meta)).status).toBe(200);
+    expect(await db.inboundEvent.count({ where: { accountId: a.id } })).toBe(2);
+  });
   it('lote A/B e mesmo ID entre tipos/contas persistem separados; concorrência/replay não duplicam jobs', async () => {
     const a = await account(), b = await account();
     const batch = syntheticBatch([a.professionalId, b.professionalId], `event-${randomUUID()}`);

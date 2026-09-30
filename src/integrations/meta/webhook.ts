@@ -4,7 +4,9 @@ import { z } from 'zod';
 export const MAX_WEBHOOK_BYTES = 1024 * 1024;
 export const WEBHOOK_FIELDS = ['comments', 'messages', 'messaging_postbacks'] as const;
 export type WebhookField = typeof WEBHOOK_FIELDS[number];
-export interface WebhookApp { readonly kind: 'synthetic'; alias: string; secret: string; verifyToken: string }
+export type WebhookApp =
+  | { readonly kind: 'synthetic'; alias: string; secret: string; verifyToken: string }
+  | { readonly kind: 'meta'; alias: string; secret: string; verifyToken: string; pilotProfessionalId: string };
 export interface CanonicalEvent {
   professionalId: string; externalId: string; kind: 'comment' | 'message' | 'story' | 'postback';
   field: WebhookField; occurredAt: Date; actorId: string; text: string | null;
@@ -27,12 +29,14 @@ const envelope = z.object({ object: z.literal('instagram'), entry: z.array(z.obj
   messaging: z.array(z.unknown()).max(100).optional(),
 })).min(1).max(100) });
 
-export class InvalidWebhook extends Error { constructor() { super('Webhook local inválido; corpo e assinatura omitidos.'); } }
+export class InvalidWebhook extends Error { constructor() { super('Webhook inválido; corpo e assinatura omitidos.'); } }
 function validateApp(app: WebhookApp) {
-  if (app.kind !== 'synthetic' || !/^[a-z0-9-]{1,50}$/.test(app.alias) || app.secret.length < 32 || app.verifyToken.length < 32) throw new InvalidWebhook();
+  if ((app.kind !== 'synthetic' && app.kind !== 'meta') || !/^[a-z0-9-]{1,50}$/.test(app.alias) || app.secret.length < 32 || app.verifyToken.length < 32 ||
+      (app.kind === 'meta' && !/^\d+$/.test(app.pilotProfessionalId))) throw new InvalidWebhook();
 }
 export function signSyntheticWebhook(app: WebhookApp, bytes: Uint8Array) {
   validateApp(app);
+  if (app.kind !== 'synthetic') throw new InvalidWebhook();
   return `sha256=${createHmac('sha256', app.secret).update(bytes).digest('hex')}`;
 }
 export function parseSignedWebhook(app: WebhookApp, bytes: Uint8Array, signature: string | null, now = new Date()) {

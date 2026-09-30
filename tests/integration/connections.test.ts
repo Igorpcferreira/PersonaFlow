@@ -2,8 +2,8 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPrisma } from '../../src/shared/db';
 import { TokenVault } from '../../src/modules/accounts/token-vault';
-import { completeOAuth, createOAuthState, getConnectedToken, refreshConnection, revokeConnection, rotateCredentialKey } from '../../src/modules/accounts/connections';
-import { FakeOAuthProvider, LOCAL_META_SCOPES, SyntheticOAuthRevoked, type SyntheticOAuthProvider } from '../../src/integrations/meta/oauth-contract';
+import { completeOAuth, completeOAuthCallback, createOAuthState, getConnectedToken, refreshConnection, revokeConnection, rotateCredentialKey } from '../../src/modules/accounts/connections';
+import { FakeOAuthProvider, LOCAL_META_SCOPES, SyntheticOAuthRevoked, type MetaOAuthProvider, type SyntheticOAuthProvider } from '../../src/integrations/meta/oauth-contract';
 
 const db = createPrisma();
 const keys = new Map([[1, randomBytes(32)], [2, randomBytes(32)]]);
@@ -42,6 +42,23 @@ describe('PF-015-L: OAuth/credenciais PostgreSQL sem rede', () => {
     await expect(completeOAuth(db, vault, a.provider, a.context)).rejects.toThrow('omitidos');
     expect(a.provider.exchanges).toBe(1);
     expect(await db.accountCredential.count({ where: { accountId: b.account.id } })).toBe(0);
+  });
+
+  it('callback Meta recupera conta e sessão somente do state opaco e cifra o token', async () => {
+    const a = await fixture('meta-callback');
+    const provider: MetaOAuthProvider = {
+      kind: 'meta',
+      exchangeCode: async (code) => {
+        expect(code).toBe('code-from-meta');
+        return { accessToken: 'meta-token-for-test-only', expiresIn: 60 * 24 * 60 * 60, scopes: [...LOCAL_META_SCOPES] };
+      },
+      identity: async () => ({ user_id: a.account.professionalId, id: 'meta-app-scoped-id' }),
+    };
+    await completeOAuthCallback(db, vault, provider, { state: a.context.state, code: 'code-from-meta' });
+    const credential = await db.accountCredential.findUniqueOrThrow({ where: { accountId: a.account.id } });
+    expect(Buffer.from(credential.ciphertext).includes(Buffer.from('meta-token-for-test-only'))).toBe(false);
+    expect((await getConnectedToken(db, vault, a.account.id)).accessToken).toBe('meta-token-for-test-only');
+    await expect(completeOAuthCallback(db, vault, provider, { state: a.context.state, code: 'replay' })).rejects.toThrow('omitidos');
   });
 
   it('state/sessão expirados, scopes ausentes e user_id não comprovado bloqueiam conexão', async () => {

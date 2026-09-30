@@ -1,14 +1,16 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { Database } from '../../shared/db';
 import { lockAccount } from '../../shared/account-lock';
-import { grantSchema, identitySchema, LOCAL_META_SCOPES, SyntheticOAuthRevoked, type SyntheticOAuthProvider, type TokenGrant } from '../../integrations/meta/oauth-contract';
+import { grantSchema, identitySchema, LOCAL_META_SCOPES, SyntheticOAuthRevoked, type MetaOAuthProvider, type SyntheticOAuthProvider, type TokenGrant } from '../../integrations/meta/oauth-contract';
 import { TokenVault } from './token-vault';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const fail = () => new Error('Conexão local recusada; detalhes e credenciais omitidos.');
 
-function validateProvider(provider: SyntheticOAuthProvider) {
-  if (provider.kind !== 'synthetic') throw fail();
+type OAuthCodeProvider = SyntheticOAuthProvider | MetaOAuthProvider;
+
+function validateProvider(provider: OAuthCodeProvider) {
+  if (provider.kind !== 'synthetic' && provider.kind !== 'meta') throw fail();
 }
 
 function verifiedGrant(grant: unknown, scopes: string[]): TokenGrant {
@@ -31,7 +33,7 @@ export async function createOAuthState(db: Database, accountId: string, sessionI
   return state;
 }
 
-export async function completeOAuth(db: Database, vault: TokenVault, provider: SyntheticOAuthProvider,
+export async function completeOAuth(db: Database, vault: TokenVault, provider: OAuthCodeProvider,
   context: { accountId: string; sessionId: string; state: string; code: string }) {
   validateProvider(provider);
   const { accountId, sessionId, state, code } = context;
@@ -63,6 +65,18 @@ export async function completeOAuth(db: Database, vault: TokenVault, provider: S
     await tx.instagramAccount.update({ where: { id: accountId }, data: { connectionGeneration: generation, appScopedId: identity.id } });
     await tx.deliveryIntent.updateMany({ where: { accountId, status: 'pending', connectionGeneration: { not: generation } }, data: { status: 'canceled', reason: 'connection_changed' } });
   });
+}
+
+// O callback externo carrega apenas state e code. A conta e a sessão são recuperadas do
+// state opaco antes do claim de uso único, nunca de parâmetros controlados pela Meta.
+export async function completeOAuthCallback(db: Database, vault: TokenVault, provider: MetaOAuthProvider,
+  context: { state: string; code: string }) {
+  if (provider.kind !== 'meta') throw fail();
+  const stateHash = hash(context.state);
+  const pending = await db.metaOAuthState.findFirst({ where: { stateHash, expiresAt: { gt: new Date() },
+    session: { expiresAt: { gt: new Date() } } }, select: { accountId: true, sessionId: true } });
+  if (!pending) throw fail();
+  await completeOAuth(db, vault, provider, { ...context, ...pending });
 }
 
 export async function getConnectedToken(db: Database, vault: TokenVault, accountId: string, expectedGeneration?: number) {
