@@ -1,6 +1,18 @@
 # Estado atual
 
-Atualizado em **29/09/2026**. Fase: **MVP local autorizado concluído e validado.** Correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L completos com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy e custos novos fora do escopo; push autorizado pelo pedido de 29/09.
+O bloco de 29/09 abaixo é o fechamento histórico do MVP fictício. O pedido de Pedro em 30/09 ampliou o escopo para um piloto real somente da @somoskyber. Não use a seção histórica de pendências como retrato vivo do app Meta.
+
+## Piloto Kyber em 30/09/2026
+
+No [PR #1](https://github.com/Igorpcferreira/PersonaFlow/pull/1), foram implementados e testados localmente o editor de uma única DM, o início/callback do OAuth Instagram, a recepção de webhook com HMAC e a restrição do lote ao ID profissional da @somoskyber. `PERSONAFLOW_SEND_MODE=disabled` é obrigatório, e não existe transporte Meta real de envio. Passaram 32 testes unitários, 73 integrações com PostgreSQL e o build. O [CI do commit 1bc8455](https://github.com/Igorpcferreira/PersonaFlow/actions/runs/36771220055) concluiu com sucesso em 30/09. Uma rodada anterior falhou em teste de recuperação da fila por tempo de espera; o teste foi ajustado para processar backlog compartilhado e voltou a passar localmente e no CI.
+
+Conferido no painel Meta em 30/09: portfólio Kyber Tech criado, @somoskyber conectada, app PersonaFlow Kyber criado com as três permissões requeridas e convite de testador aceito. O app permanece não publicado, sem token, callback configurado no painel, webhook assinado, evento real ou DM. A rota local de OAuth ainda não comprova scopes efetivamente concedidos. Pedro aprovou `personaflow.somoskyber.com.br` e a retenção do piloto (90 dias de mensagens/notas, até 7 dias de diagnósticos brutos, 30 dias de logs sanitizados e exclusão sob solicitação); a purga não foi implementada. A página pública específica está preparada no [PR da Kyber #39](https://github.com/PedroLLou/kyber-tech/pull/39), ainda sem merge no domínio.
+
+O SSH do PC para a VPS expira com Cloudflare One Client conectado. No teste autorizado em 30/09, TCP 22 respondeu imediatamente sem WARP e o cliente foi reconectado. A VPS ainda não foi inspecionada por dentro nem recebeu o PersonaFlow.
+
+## Fechamento histórico do MVP local em 29/09/2026
+
+Fase: **MVP local autorizado concluído e validado.** Correções PF-010–012 e recortes PF-014–017-L, PF-020–026-L, PF-100-L/PF-104-L completos com duas contas fictícias. UI simulada antes de PF-013 expressamente permitida. Escopo em PF-003/[AGENTS](../AGENTS.md); contas/apps reais, envio externo, VPS/DNS, deploy e custos novos estavam fora daquele escopo; push autorizado pelo pedido de 29/09.
 
 ## Retomada por Pedro em 30/09/2026
 
