@@ -30,8 +30,9 @@ export function readyRecipe(config: RecipeConfig, trigger = 'comment') {
   if (trigger === 'message' || trigger === 'story') return config.terms.length > 0 && Boolean(config.introduction.trim()) &&
     !config.publicReplyEnabled && !config.buttonEnabled && !config.followRequired && textReply(config).length <= 2000;
   if (trigger !== 'comment') return false;
-  return config.terms.length > 0 && Boolean(config.introduction.trim() && config.finalMessage.trim() && config.link) &&
+  return config.terms.length > 0 && Boolean(config.introduction.trim()) &&
     (!config.publicReplyEnabled || Boolean(config.publicReply.trim())) && (!config.buttonEnabled || Boolean(config.buttonTitle.trim())) &&
     (!config.followRequired || Boolean(config.buttonEnabled && config.followPrompt.trim())) &&
-    (config.buttonEnabled ? `${config.finalMessage}\n${config.link}`.length <= 2000 : `${config.introduction}\n${config.finalMessage}\n${config.link}`.length <= 2000);
+    (config.buttonEnabled ? Boolean(config.finalMessage.trim() && config.link) && `${config.finalMessage}\n${config.link}`.length <= 2000
+      : textReply(config).length <= 2000);
 }

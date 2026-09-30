@@ -16,7 +16,7 @@ describe('PF-023-L: termos Unicode e configuração', () => {
     const text = { ...emptyRecipe, terms: ['ajuda'], introduction: 'Resposta' };
     expect(readyRecipe(text, 'message')).toBe(true);
     expect(readyRecipe(text, 'story')).toBe(true);
-    expect(readyRecipe(text)).toBe(false);
+    expect(readyRecipe(text)).toBe(true);
     expect(readyRecipe({ ...text, buttonEnabled: true }, 'message')).toBe(false);
     expect(readyRecipe({ ...text, introduction: 'a'.repeat(2000), finalMessage: 'b' }, 'story')).toBe(false);
     for (const value of [' PARAR ', 'sair!', 'ＳＡＩＲ', 'Parar.']) expect(isStopCommand(value)).toBe(true);
@@ -26,6 +26,7 @@ describe('PF-023-L: termos Unicode e configuração', () => {
     expect(readyRecipe(emptyRecipe)).toBe(false);
     const ready = { ...emptyRecipe, terms: ['site'], introduction: 'Apresentação', finalMessage: 'Mensagem final', link: 'https://example.invalid' };
     expect(readyRecipe(ready)).toBe(true);
+    expect(readyRecipe({ ...ready, buttonEnabled: true, buttonTitle: 'Continuar', finalMessage: '', link: '' })).toBe(false);
     expect(readyRecipe({ ...ready, followRequired: true, followPrompt: 'Siga para continuar' })).toBe(false);
     expect(readyRecipe({ ...ready, introduction: 'a'.repeat(2000) })).toBe(false);
     expect(readyRecipe({ ...ready, buttonEnabled: true, buttonTitle: 'Continuar', introduction: 'a'.repeat(2000) })).toBe(true);

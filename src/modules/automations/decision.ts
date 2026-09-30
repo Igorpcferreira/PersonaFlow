@@ -25,7 +25,7 @@ export async function decideAutomation(tx: Prisma.TransactionClient, boss: PgBos
     if (config.buttonEnabled) await startSequence(tx, boss, context, rule, config);
     else await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
       automationId: rule.id, source: 'automatic', effect: 'private_reply',
-      body: { text: `${config.introduction}\n${config.finalMessage}\n${config.link}`, link: config.link } });
+      body: { text: textReply(config), ...(config.link ? { link: config.link } : {}) } });
     if (config.publicReplyEnabled) await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
       automationId: rule.id, source: 'automatic', effect: 'public_reply', body: { text: config.publicReply } });
     // Uma intenção por efeito/comentário, mesmo diante de registros conflitantes fora da API.
