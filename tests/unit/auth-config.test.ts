@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertLocalRequest, assertSameOrigin, parseAuthConfig } from '../../src/shared/auth-config';
+import { assertLocalRequest, assertSameOrigin, parseAuthConfig, PRODUCTION_ORIGIN } from '../../src/shared/auth-config';
 
 const env = {
   PERSONAFLOW_MODE: 'local-demo', BETTER_AUTH_URL: 'http://127.0.0.1:3000',
@@ -30,5 +30,18 @@ describe('limites de autenticação local', () => {
     expect(() => assertLocalRequest(new Request(config.baseURL), { ...config, mode: 'locked' })).toThrow();
     expect(() => assertSameOrigin(new Request(config.baseURL, { headers: { origin: 'http://external.example' } }), config)).toThrow();
     expect(() => assertSameOrigin(new Request(config.baseURL, { headers: { origin: config.baseURL, 'content-type': 'text/plain' } }), config)).toThrow();
+  });
+
+  it('exige produção explícita, URL HTTPS canônica e uma única identidade GitHub imutável', () => {
+    const production = {
+      ...env, PERSONAFLOW_MODE: 'production', NODE_ENV: 'production', BETTER_AUTH_URL: PRODUCTION_ORIGIN,
+      OPERATOR_ALLOWLIST: 'github:123456', GITHUB_CLIENT_ID: 'test-client-id', GITHUB_CLIENT_SECRET: 'test-client-secret',
+    };
+    expect(parseAuthConfig(production)).toMatchObject({ mode: 'production', baseURL: PRODUCTION_ORIGIN, subjects: ['github:123456'] });
+    for (const patch of [
+      { BETTER_AUTH_URL: 'http://personaflow.somoskyber.com.br' }, { BETTER_AUTH_URL: `${PRODUCTION_ORIGIN}/admin` },
+      { OPERATOR_ALLOWLIST: 'github:123456,github:789012' }, { OPERATOR_ALLOWLIST: 'local-demo:demo-operator-001' },
+      { GITHUB_CLIENT_ID: undefined }, { GITHUB_CLIENT_SECRET: undefined }, { PERSONAFLOW_BIND_HOST: '0.0.0.0' },
+    ]) expect(() => parseAuthConfig({ ...production, ...patch })).toThrow('valores omitidos');
   });
 });

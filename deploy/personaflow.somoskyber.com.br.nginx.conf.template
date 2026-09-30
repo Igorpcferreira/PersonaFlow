@@ -1,0 +1,46 @@
+# Instale como root em /etc/nginx/sites-available/personaflow.somoskyber.com.br.conf
+# depois de substituir os três placeholders e obter um certificado válido.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name personaflow.somoskyber.com.br;
+
+    location /.well-known/acme-challenge/ {
+        root __ACME_WEBROOT__;
+    }
+
+    location / {
+        return 301 https://personaflow.somoskyber.com.br$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name personaflow.somoskyber.com.br;
+
+    ssl_certificate __TLS_CERTIFICATE_PATH__;
+    ssl_certificate_key __TLS_CERTIFICATE_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:PersonaFlowTLS:10m;
+    ssl_session_tickets off;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options DENY always;
+
+    location / {
+        proxy_pass http://127.0.0.1:3210;
+        proxy_http_version 1.1;
+        proxy_set_header Host personaflow.somoskyber.com.br;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host personaflow.somoskyber.com.br;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_set_header Forwarded "";
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}

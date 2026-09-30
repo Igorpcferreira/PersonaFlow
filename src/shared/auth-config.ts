@@ -1,17 +1,18 @@
 import { z } from 'zod';
 
 const loopback = new Set(['127.0.0.1', 'localhost', '[::1]']);
+export const PRODUCTION_ORIGIN = 'https://personaflow.somoskyber.com.br';
 const schema = z.object({
-  PERSONAFLOW_MODE: z.enum(['local-demo', 'locked']),
-  BETTER_AUTH_URL: z.url(),
-  BETTER_AUTH_SECRET: z.string().min(32),
-  OPERATOR_ALLOWLIST: z.string().min(1),
-  NODE_ENV: z.string().optional(),
-  PERSONAFLOW_BIND_HOST: z.string(),
+  PERSONAFLOW_MODE: z.enum(['local-demo', 'production', 'locked']),
+  BETTER_AUTH_URL: z.url(), BETTER_AUTH_SECRET: z.string().min(32), OPERATOR_ALLOWLIST: z.string().min(1),
+  NODE_ENV: z.string().optional(), PERSONAFLOW_BIND_HOST: z.string(),
+  GITHUB_CLIENT_ID: z.string().min(1).optional(), GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
 });
 
+export type AuthMode = 'local-demo' | 'production' | 'locked';
 export type AuthConfig = {
-  mode: 'local-demo' | 'locked'; baseURL: string; secret: string; subjects: string[];
+  mode: AuthMode; baseURL: string; secret: string; subjects: string[];
+  github?: { clientId: string; clientSecret: string };
 };
 
 export function parseAuthConfig(env: Record<string, string | undefined>): AuthConfig {
@@ -20,12 +21,18 @@ export function parseAuthConfig(env: Record<string, string | undefined>): AuthCo
   if (!parsed.success) return fail();
   const data = parsed.data;
   const url = new URL(data.BETTER_AUTH_URL);
-  // Esta etapa só opera localmente. Locked mantém todos os endpoints sintéticos fechados.
+  const subjects = data.OPERATOR_ALLOWLIST.split(',').map((subject) => subject.trim());
+  if (subjects.some((subject) => !/^(local-demo:demo-operator-[a-z0-9-]+|github:[0-9]+)$/.test(subject))) return fail();
+  if (data.PERSONAFLOW_MODE === 'production') {
+    if (data.NODE_ENV !== 'production' || url.origin !== PRODUCTION_ORIGIN || url.pathname !== '/' ||
+        url.search || url.hash || url.username || url.password || !loopback.has(data.PERSONAFLOW_BIND_HOST) ||
+        subjects.length !== 1 || !/^github:[0-9]+$/.test(subjects[0]) || !data.GITHUB_CLIENT_ID || !data.GITHUB_CLIENT_SECRET) return fail();
+    return { mode: 'production', baseURL: PRODUCTION_ORIGIN, secret: data.BETTER_AUTH_SECRET, subjects,
+      github: { clientId: data.GITHUB_CLIENT_ID, clientSecret: data.GITHUB_CLIENT_SECRET } };
+  }
   if (url.protocol !== 'http:' || !loopback.has(url.hostname) || url.pathname !== '/' ||
       url.search || url.hash || url.username || url.password || !loopback.has(data.PERSONAFLOW_BIND_HOST)) return fail();
   if (data.PERSONAFLOW_MODE === 'local-demo' && data.NODE_ENV === 'production') return fail();
-  const subjects = data.OPERATOR_ALLOWLIST.split(',').map((s) => s.trim());
-  if (subjects.some((s) => !/^(local-demo:demo-operator-[a-z0-9-]+|github:[0-9]+)$/.test(s))) return fail();
   return { mode: data.PERSONAFLOW_MODE, baseURL: url.origin, secret: data.BETTER_AUTH_SECRET, subjects };
 }
 

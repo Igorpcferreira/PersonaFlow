@@ -11,6 +11,40 @@ const challenge = (value: string) => createHash('sha256').update(value).digest('
 export const DEMO_OPERATOR_SUBJECT = 'demo-operator-001';
 const rejected = () => new APIError('FORBIDDEN', { message: 'Operador não autorizado.' });
 
+type GitHubProfile = { id?: string | number; login?: string; name?: string | null; email?: string | null; avatar_url?: string | null };
+type GitHubEmail = { email: string; primary: boolean; verified: boolean };
+
+function githubProvider(config: AuthConfig) {
+  if (!config.github) throw new Error('GitHub indisponível.');
+  return genericOAuth({ config: [{
+    providerId: 'github', name: 'GitHub', clientId: config.github.clientId, clientSecret: config.github.clientSecret,
+    authorizationUrl: 'https://github.com/login/oauth/authorize', tokenUrl: 'https://github.com/login/oauth/access_token',
+    scopes: ['read:user', 'user:email'], pkce: true,
+    accountSubject: ({ profile }) => {
+      const subject = String((profile as GitHubProfile).id ?? '');
+      if (!/^[0-9]+$/.test(subject) || !allowedSubject(config, 'github', subject)) throw rejected();
+      return subject;
+    },
+    getUserInfo: async (tokens) => {
+      if (!tokens.accessToken) return null;
+      const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${tokens.accessToken}`, 'User-Agent': 'PersonaFlow' };
+      const profileResponse = await fetch('https://api.github.com/user', { headers });
+      if (!profileResponse.ok) return null;
+      const profile = await profileResponse.json() as GitHubProfile;
+      const subject = String(profile.id ?? '');
+      // Rejeita antes de entregar o perfil ao ciclo de persistência do Better Auth.
+      if (!/^[0-9]+$/.test(subject) || !allowedSubject(config, 'github', subject)) throw rejected();
+      const emailResponse = await fetch('https://api.github.com/user/emails', { headers });
+      if (!emailResponse.ok) return null;
+      const emails = await emailResponse.json() as GitHubEmail[];
+      const email = profile.email ?? emails.find((item) => item.primary && item.verified)?.email ?? emails.find((item) => item.verified)?.email;
+      const verified = typeof email === 'string' && emails.some((item) => item.email === email && item.verified);
+      if (!email || !verified) return null;
+      return { id: subject, name: profile.name || profile.login || 'Operador', email, emailVerified: true, image: profile.avatar_url ?? undefined };
+    },
+  }] });
+}
+
 export function createAuth(db: Database, config: AuthConfig) {
   const localProvider = genericOAuth({ config: [{
     providerId: 'local-demo', clientId: 'personaflow-local-synthetic', pkce: true,
@@ -40,20 +74,15 @@ export function createAuth(db: Database, config: AuthConfig) {
     },
   }] });
 
+  const plugins = config.mode === 'local-demo' ? [localProvider] : config.mode === 'production' ? [githubProvider(config)] : [];
   return betterAuth({
     appName: 'PersonaFlow', baseURL: config.baseURL, secret: config.secret,
     database: prismaAdapter(db, { provider: 'postgresql', transaction: true }),
-    emailAndPassword: { enabled: false },
-    // Sem credenciais externas. O handler abaixo recusa sign-in/callback GitHub nesta etapa.
-    socialProviders: { github: {
-      clientId: 'not-configured-local-stage', clientSecret: 'not-configured-local-stage',
-      disableSignUp: true,
-    } },
-    plugins: config.mode === 'local-demo' ? [localProvider] : [],
+    emailAndPassword: { enabled: false }, socialProviders: {}, plugins,
     trustedOrigins: [config.baseURL],
     account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
     session: { expiresIn: 60 * 60 * 8, updateAge: 60 * 60, cookieCache: { enabled: false } },
-    advanced: { trustedProxyHeaders: false, defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' } },
+    advanced: { trustedProxyHeaders: false, defaultCookieAttributes: { httpOnly: true, sameSite: 'lax', secure: config.mode === 'production' } },
     logger: { disabled: true },
     databaseHooks: {
       account: { create: { before: async (identity) => {
@@ -76,31 +105,34 @@ async function authorizedUser(db: Database, config: AuthConfig, userId: string) 
 }
 
 export async function requireOperator(auth: OperatorAuth, db: Database, config: AuthConfig, request: Request) {
-  assertLocalRequest(request, config);
+  if (config.mode === 'local-demo') assertLocalRequest(request, config);
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session || !await authorizedUser(db, config, session.user.id)) throw new APIError('UNAUTHORIZED', { message: 'Entre como operador.' });
   return session;
 }
 
+function validLoginDestination(value: unknown, config: AuthConfig) {
+  return value === undefined || typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') &&
+    !/[\\\x00-\x20]/.test(value) && !/%2f|%5c/i.test(value) && new URL(value, config.baseURL).origin === config.baseURL;
+}
+
 export async function handleAuthRequest(auth: OperatorAuth, config: AuthConfig, request: Request): Promise<Response> {
   try {
-    assertLocalRequest(request, config);
+    if (config.mode === 'local-demo') assertLocalRequest(request, config);
     const path = new URL(request.url).pathname.replace('/api/auth', '');
+    const provider = config.mode === 'local-demo' ? 'local-demo' : config.mode === 'production' ? 'github' : undefined;
     if (request.method === 'POST') {
       assertSameOrigin(request, config);
       if (path === '/sign-in/social') {
         const body = await request.clone().json();
-        if (body.provider !== 'local-demo' || body.requestSignUp || body.idToken) return Response.json({ error: 'Provedor indisponível nesta etapa local.' }, { status: 403 });
-        for (const field of ['callbackURL', 'errorCallbackURL', 'newUserCallbackURL']) {
-          const value = body[field];
-          if (value !== undefined && (typeof value !== 'string' || !value.startsWith('/') ||
-              value.startsWith('//') || /[\\\x00-\x20]/.test(value) || /%2f|%5c/i.test(value) ||
-              new URL(value, config.baseURL).origin !== config.baseURL)) {
-            return Response.json({ error: 'Destino de login inválido.' }, { status: 403 });
-          }
-        }
+        if (!body || typeof body !== 'object' || Array.isArray(body) ||
+            (config.mode === 'production' && (Object.keys(body).some((field) => !['provider', 'callbackURL', 'errorCallbackURL'].includes(field)) ||
+              body.callbackURL !== '/' || body.errorCallbackURL !== '/?login=error')) ||
+            !provider || body.provider !== provider || body.requestSignUp || body.idToken ||
+            !['callbackURL', 'errorCallbackURL', 'newUserCallbackURL'].every((field) => validLoginDestination(body[field], config))) return Response.json({ error: 'Provedor indisponível.' }, { status: 403 });
       } else if (path !== '/sign-out') return Response.json({ error: 'Operação indisponível.' }, { status: 404 });
-    } else if (request.method !== 'GET' || path !== '/callback/local-demo') {
+      else if (config.mode === 'production' && JSON.stringify(await request.clone().json()) !== '{}') return Response.json({ error: 'Operação indisponível.' }, { status: 403 });
+    } else if (request.method !== 'GET' || !provider || path !== `/callback/${provider}`) {
       return Response.json({ error: 'Operação indisponível.' }, { status: 404 });
     }
     const response = await auth.handler(request);

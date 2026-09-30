@@ -1,0 +1,23 @@
+[Unit]
+Description=PersonaFlow Next.js web application
+Requires=personaflow-postgres.service
+After=personaflow-postgres.service
+
+[Service]
+Type=simple
+WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
+Environment=NODE_ENV=production
+Environment=PORT=3210
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=%h/.config/personaflow/personaflow.env
+ExecStart=/home/pedro/.local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3210
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ReadWritePaths=__PERSONAFLOW_RELEASE_DIR__
+
+[Install]
+WantedBy=default.target
