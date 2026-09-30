@@ -69,6 +69,7 @@ model Conversation {
   controlVersion Int         @default(0)
   status    String           @default("open")
   note      String?
+  noteUpdatedAt DateTime?    @db.Timestamptz(3)
   organizationVersion Int    @default(0)
   lastEligibleInboundAt DateTime? @db.Timestamptz(3)
   lastActivityAt DateTime @default(now()) @db.Timestamptz(3)
@@ -80,6 +81,7 @@ model Conversation {
 
   @@id([accountId, id])
   @@unique([accountId, contactId])
+  @@index([accountId, noteUpdatedAt])
 }
 
 model Message {
@@ -98,6 +100,7 @@ model Message {
 
   @@id([accountId, id])
   @@unique([accountId, externalId])
+  @@index([accountId, receivedAt])
 }
 
 model InboundEvent {
@@ -117,6 +120,7 @@ model InboundEvent {
 
   @@id([accountId, id])
   @@unique([accountId, externalId])
+  @@index([accountId, receivedAt])
 }
 
 // Better Auth: identidade do operador independente das contas Instagram.
@@ -244,6 +248,7 @@ model DeliveryIntent {
   @@id([accountId, id])
   @@unique([accountId, idempotencyKey])
   @@index([accountId, status, nextAttemptAt])
+  @@index([accountId, createdAt])
 }
 
 model DeliveryAttempt {

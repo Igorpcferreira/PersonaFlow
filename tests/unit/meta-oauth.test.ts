@@ -8,7 +8,7 @@ const env = {
   PERSONAFLOW_TOKEN_KEY: randomBytes(32).toString('hex'),
   META_INSTAGRAM_APP_ID: '1234567890',
   META_INSTAGRAM_APP_SECRET: randomBytes(32).toString('hex'),
-  META_INSTAGRAM_OAUTH_CALLBACK_URL: 'https://persona.example.test/api/meta/oauth/callback',
+  META_INSTAGRAM_OAUTH_CALLBACK_URL: 'https://personaflow.somoskyber.com.br/api/meta/oauth/callback',
   META_INSTAGRAM_GRAPH_VERSION: 'v25.0',
   META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
   META_INSTAGRAM_PILOT_PROFESSIONAL_ID: '17841400000000000',
@@ -25,8 +25,9 @@ describe('OAuth Instagram do piloto', () => {
     expect(config.callbackURL).toBe(env.META_INSTAGRAM_OAUTH_CALLBACK_URL);
     for (const invalid of [
       { ...env, PERSONAFLOW_SEND_MODE: 'enabled' },
-      { ...env, META_INSTAGRAM_OAUTH_CALLBACK_URL: 'http://persona.example.test/api/meta/oauth/callback' },
-      { ...env, META_INSTAGRAM_OAUTH_CALLBACK_URL: 'https://persona.example.test/other' },
+      { ...env, META_INSTAGRAM_OAUTH_CALLBACK_URL: 'http://personaflow.somoskyber.com.br/api/meta/oauth/callback' },
+      { ...env, META_INSTAGRAM_OAUTH_CALLBACK_URL: 'https://personaflow.somoskyber.com.br/other' },
+      { ...env, META_INSTAGRAM_OAUTH_CALLBACK_URL: 'https://persona.example.test/api/meta/oauth/callback' },
       { ...env, META_INSTAGRAM_PILOT_ACCOUNT_ID: 'not-a-uuid' },
     ]) expect(() => parseMetaRuntimeConfig(invalid)).toThrow('valores omitidos');
   });

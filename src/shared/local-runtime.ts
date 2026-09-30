@@ -6,6 +6,7 @@ import type { WebhookApp } from '../integrations/meta/webhook';
 import { InstagramLoginOAuthProvider, type MetaOAuthSettings } from '../integrations/meta/oauth-contract';
 import { createPrisma } from './db';
 import { getAuthRuntime } from './auth-runtime';
+import { PRODUCTION_ORIGIN } from './auth-config';
 
 const secrets = z.object({
   PERSONAFLOW_TOKEN_KEY: z.string().regex(/^[a-f0-9]{64}$/),
@@ -37,7 +38,7 @@ export function parseMetaRuntimeConfig(env: Record<string, string | undefined>):
   if (!parsed.success) throw new Error('Configuração Meta ausente ou inválida; valores omitidos.');
   const data = parsed.data;
   const callback = new URL(data.META_INSTAGRAM_OAUTH_CALLBACK_URL);
-  if (callback.protocol !== 'https:' || callback.pathname !== '/api/meta/oauth/callback' || callback.search || callback.hash ||
+  if (callback.origin !== PRODUCTION_ORIGIN || callback.pathname !== '/api/meta/oauth/callback' || callback.search || callback.hash ||
       callback.username || callback.password) throw new Error('Configuração Meta ausente ou inválida; valores omitidos.');
   return { appId: data.META_INSTAGRAM_APP_ID, appSecret: data.META_INSTAGRAM_APP_SECRET, callbackURL: callback.toString(),
     graphVersion: data.META_INSTAGRAM_GRAPH_VERSION, pilotAccountId: data.META_INSTAGRAM_PILOT_ACCOUNT_ID,
