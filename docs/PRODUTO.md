@@ -4,7 +4,7 @@
 
 Pedro decidiu começar apenas pela conta profissional @somoskyber, embora o projeto original tenha sido desenhado para duas contas. O caso inicial é um Reels próprio com comentário “prévia” e **uma DM inicial**. Depois da resposta da pessoa, o atendimento fica para revisão humana. Não ativar resposta pública, botão, exigência de seguir, segunda DM automática, link ou cadastro de lead como consequência desse primeiro comentário. A pessoa pode informar o Instagram do negócio ou fotos; não pedir dados adicionais antes de haver necessidade.
 
-Essa decisão é objetivo do piloto, não estado implementado: em 30/09/2026 a integração Meta, o login administrativo de produção e o deploy ainda não existem. O texto exato da DM e o app Meta ainda aguardam conferência. A primeira DM enviada não prova entrega nem abre por si só uma janela para continuação automática. Preservar uma opção explícita de pausa e transferência para atendimento humano.
+Essa decisão é objetivo do piloto, não estado implementado: em 30/09/2026 a integração Meta, o login administrativo de produção e o deploy ainda não existem. Pedro aprovou o texto da primeira DM para o teste real: “Oi! Vi seu pedido de prévia. Me manda o @ do seu negócio ou algumas fotos para eu entender o que você faz? Eu continuo por aqui depois.” O app Meta ainda aguarda criação no portfólio da Kyber. A primeira DM enviada não prova entrega nem abre por si só uma janela para continuação automática. Preservar uma opção explícita de pausa e transferência para atendimento humano.
 
 ## Objetivo
 
