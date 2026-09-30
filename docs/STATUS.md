@@ -10,6 +10,8 @@ Inspeção do checkout público `2555234` em 30/09: todas as rotas locais de con
 
 A navegação do painel local foi reorganizada com menu lateral no desktop e duas linhas de navegação no celular, mantendo as quatro seções e a indicação explícita de simulação. `npm ci`, `npm run db:generate`, `npm run check` (27 unitários) e `npm run build` passaram antes do ajuste; `npm run check` e `npm run build` passaram novamente depois. A primeira execução E2E falhou apenas por falta do Chromium do Playwright neste checkout; após instalar o navegador, a repetição passou com 14/14 jornadas. A nova aparência foi inspecionada visualmente em 1440×900 e 390×844; o primeiro layout cortava “Diagnóstico” no celular, corrigido com navegação em duas linhas. O build passou após o último ajuste de CSS.
 
+O [CI da PR #1](https://github.com/Igorpcferreira/PersonaFlow/actions/runs/36761252243) passou em 30/09/2026 após aumentar para 20 s o limite de um teste de métricas que excedeu 5 s no runner anterior. Essa prova cobre o código da PR; o merge na branch padrão ainda não ocorreu. A nomenclatura antiga “CI remoto sem execução” nos registros históricos abaixo refere-se apenas ao fechamento do MVP em 29/09.
+
 ## Implementado e validado localmente
 
 - PF-010–012: Next.js/TypeScript/Node 24, Prisma 7.10.0/PostgreSQL 16/pg-boss 12.35.0. URLs apenas loopback personaflow_*, sem query/fragmento e com caminho estrito. FKs compostas e consultas escopadas, duas contas fictícias e credenciais independentes. Evento/job atômicos no mesmo banco.
