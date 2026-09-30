@@ -6,6 +6,7 @@ import { lockAccount } from '../../shared/account-lock';
 import { lockConversation } from '../inbox/control';
 
 export const DELIVERY_QUEUE = 'delivery-intent';
+export const META_PILOT_DELIVERY_QUEUE = 'meta-pilot-delivery';
 export const DAY = 24 * 60 * 60_000;
 export const simulationOutcomes = ['accepted', 'timeout', 'rejected', 'before-send'] as const;
 export const effects = ['private_reply', 'public_reply', 'button', 'automatic_dm', 'link', 'manual'] as const;
@@ -19,7 +20,8 @@ const input = z.object({ accountId: z.uuid(), conversationId: z.uuid(), eventId:
 export type IntentInput = z.infer<typeof input>;
 
 async function enqueue(tx: Prisma.TransactionClient, boss: PgBoss, accountId: string, intentId: string) {
-  const jobId = await boss.send(DELIVERY_QUEUE, { accountId, intentId }, { retryLimit: 2, retryDelay: 1,
+  const queue = process.env.PERSONAFLOW_MODE === 'production' ? META_PILOT_DELIVERY_QUEUE : DELIVERY_QUEUE;
+  const jobId = await boss.send(queue, { accountId, intentId }, { retryLimit: 2, retryDelay: 1,
     db: { executeSql: async (sql: string, values: unknown[]) => ({ rows: await tx.$queryRawUnsafe<Record<string, unknown>[]>(sql, ...values) }) } });
   if (!jobId) throw new Error('Intenção sem job persistido.');
 }

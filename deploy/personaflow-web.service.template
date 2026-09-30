@@ -9,15 +9,19 @@ WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
 Environment=NODE_ENV=production
 Environment=PORT=3210
 Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_TELEMETRY_DISABLED=1
 EnvironmentFile=%h/.config/personaflow/personaflow.env
+ExecStartPre=/usr/bin/mkdir -p %h/.local/state/personaflow/logs
 ExecStart=/home/pedro/.local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3210
+StandardOutput=append:%h/.local/state/personaflow/logs/web.log
+StandardError=append:%h/.local/state/personaflow/logs/web.log
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=read-only
-ReadWritePaths=__PERSONAFLOW_RELEASE_DIR__
+ReadWritePaths=__PERSONAFLOW_RELEASE_DIR__ %h/.local/state/personaflow
 
 [Install]
 WantedBy=default.target

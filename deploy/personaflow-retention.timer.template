@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily PersonaFlow retention dry-run report
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+Unit=personaflow-retention.service
+
+[Install]
+WantedBy=timers.target

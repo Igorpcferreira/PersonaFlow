@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createBoss, INBOUND_QUEUE } from '../jobs/queue';
 import { TokenVault } from '../modules/accounts/token-vault';
-import { DELIVERY_QUEUE } from '../modules/delivery/ledger';
+import { DELIVERY_QUEUE, META_PILOT_DELIVERY_QUEUE } from '../modules/delivery/ledger';
 import type { WebhookApp } from '../integrations/meta/webhook';
 import { InstagramLoginOAuthProvider, type MetaOAuthSettings } from '../integrations/meta/oauth-contract';
 import { createPrisma } from './db';
@@ -20,7 +20,7 @@ export function parseLocalSecrets(env: Record<string, string | undefined>) {
 }
 
 const metaConfigSchema = z.object({
-  PERSONAFLOW_SEND_MODE: z.literal('disabled'),
+  PERSONAFLOW_SEND_MODE: z.enum(['disabled', 'meta-private-reply']),
   PERSONAFLOW_TOKEN_KEY: z.string().regex(/^[a-f0-9]{64}$/),
   META_INSTAGRAM_APP_ID: z.string().regex(/^\d+$/),
   META_INSTAGRAM_APP_SECRET: z.string().min(32),
@@ -73,7 +73,7 @@ async function createMetaWebhookRuntime() {
   const boss = createBoss();
   const app: WebhookApp = { kind: 'meta', alias: config.webhookAlias, secret: config.webhookSecret,
     verifyToken: config.webhookVerifyToken, pilotProfessionalId: config.pilotProfessionalId };
-  try { await boss.start(); await boss.createQueue(INBOUND_QUEUE); await boss.createQueue(DELIVERY_QUEUE); }
+  try { await boss.start(); await boss.createQueue(INBOUND_QUEUE); await boss.createQueue(META_PILOT_DELIVERY_QUEUE); }
   catch { await boss.stop().catch(() => undefined); await db.$disconnect().catch(() => undefined); throw new Error('Fila Meta indisponível.'); }
   return { db, boss, app, config };
 }

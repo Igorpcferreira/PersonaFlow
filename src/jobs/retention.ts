@@ -14,6 +14,12 @@ export type RetentionResult = {
   inboundEvents: number;
 };
 
+export type RetentionCommand = {
+  accountId: string;
+  expectedPilotAccountId: string;
+  execute: boolean;
+};
+
 export async function retainAccountContent(
   db: Database,
   value: { accountId: string; expectedPilotAccountId: string; execute?: boolean; now?: Date },
@@ -62,7 +68,10 @@ export async function retainAccountContent(
   return { ...result, dryRun: false };
 }
 
-function commandArguments(argv: string[]) {
+export function parseRetentionCommand(
+  argv: string[],
+  env: Record<string, string | undefined> = process.env,
+): RetentionCommand {
   let accountId: string | undefined;
   let execute = false;
   for (let index = 0; index < argv.length; index += 1) {
@@ -71,23 +80,53 @@ function commandArguments(argv: string[]) {
     throw new Error('Uso: tsx src/jobs/retention.ts --account-id <UUID> [--execute]');
   }
   if (!accountId) throw new Error('Informe o ID exato da conta piloto com --account-id.');
-  const expectedPilotAccountId = process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID;
+  const expectedPilotAccountId = env.META_INSTAGRAM_PILOT_ACCOUNT_ID;
   if (!expectedPilotAccountId) throw new Error('Defina META_INSTAGRAM_PILOT_ACCOUNT_ID com o UUID da conta piloto.');
+  if (execute && env.PERSONAFLOW_RETENTION_EXECUTE !== 'confirm') {
+    throw new Error('A execução efetiva exige PERSONAFLOW_RETENTION_EXECUTE=confirm.');
+  }
   return { accountId: accountIdSchema.parse(accountId), expectedPilotAccountId: accountIdSchema.parse(expectedPilotAccountId), execute };
+}
+
+export function retentionLogLine(result: RetentionResult) {
+  return JSON.stringify({
+    event: 'retention.completed',
+    accountId: result.accountId,
+    dryRun: result.dryRun,
+    redactions: {
+      messages: result.messages,
+      notes: result.notes,
+      deliveryIntents: result.deliveryIntents,
+      inboundEvents: result.inboundEvents,
+    },
+  });
+}
+
+function retentionErrorLogLine(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  const safeMessages = new Set([
+    'Informe o ID exato da conta piloto com --account-id.',
+    'Defina META_INSTAGRAM_PILOT_ACCOUNT_ID com o UUID da conta piloto.',
+    'A execução efetiva exige PERSONAFLOW_RETENTION_EXECUTE=confirm.',
+    'A retenção aceita somente a conta piloto configurada.',
+    'Conta piloto inexistente.',
+    'Data de retenção inválida.',
+  ]);
+  return JSON.stringify({ event: 'retention.failed', reason: safeMessages.has(message) ? message : 'Falha de retenção.' });
 }
 
 async function main() {
   const { createPrisma } = await import('../shared/db');
   const db = createPrisma();
   try {
-    const result = await retainAccountContent(db, commandArguments(process.argv.slice(2)));
-    console.log(JSON.stringify(result));
+    const result = await retainAccountContent(db, parseRetentionCommand(process.argv.slice(2)));
+    console.log(retentionLogLine(result));
   } finally { await db.$disconnect(); }
 }
 
 if (process.argv[1]?.endsWith('retention.ts')) {
   main().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : 'Falha de retenção.');
+    console.error(retentionErrorLogLine(error));
     process.exitCode = 1;
   });
 }

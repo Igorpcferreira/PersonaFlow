@@ -7,12 +7,31 @@ import { TokenVault } from '../accounts/token-vault';
 import { lockConversation } from '../inbox/control';
 import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
+import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
+import { META_PILOT_APPROVED_TEXT } from '../../integrations/meta/pilot-runtime';
+import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
+import { recipeConfig, readyRecipe } from '../automations/recipe';
 
 const contextSchema = z.object({ accountId: z.uuid(), intentId: z.uuid() }).strict();
 type ExecutionOptions = { now?: Date; leaseMs?: number; timeoutMs?: number };
-export async function executeIntent(db: Database, vault: TokenVault, transport: SyntheticTransport,
+export type MetaPilotTransport = { readonly kind: 'meta'; readonly graphVersion: string; readonly accountId: string;
+  readonly professionalId: string; readonly reelId: string; readonly commentId: string; readonly webhookAlias: string;
+  readonly options?: MetaPrivateReplyOptions };
+const metaTransportSchema = z.object({ kind: z.literal('meta'), graphVersion: z.string().regex(/^v[1-9]\d*\.\d+$/),
+  accountId: z.uuid(), professionalId: z.string().regex(/^[1-9]\d*$/), reelId: z.string().regex(/^[1-9]\d*$/),
+  commentId: z.string().regex(/^[1-9]\d*$/),
+  webhookAlias: z.string().regex(/^[a-z0-9-]{1,50}$/) });
+export async function executeIntent(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport,
   context: { accountId: string; intentId: string }, options: ExecutionOptions = {}) {
-  if (transport.kind !== 'synthetic' || !contextSchema.safeParse(context).success) throw new Error('Executor local recusado.');
+  if (!contextSchema.safeParse(context).success || (transport.kind === 'meta' &&
+      (process.env.PERSONAFLOW_MODE !== 'production' || process.env.PERSONAFLOW_SEND_MODE !== 'meta-private-reply' ||
+       context.accountId !== transport.accountId || !metaTransportSchema.safeParse(transport).success ||
+       process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID !== transport.accountId ||
+       process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID !== transport.professionalId ||
+       process.env.META_INSTAGRAM_PILOT_REEL_ID !== transport.reelId ||
+       process.env.META_INSTAGRAM_TEST_COMMENT_ID !== transport.commentId ||
+       process.env.META_WEBHOOK_APP_ALIAS !== transport.webhookAlias ||
+       process.env.META_INSTAGRAM_GRAPH_VERSION !== transport.graphVersion))) throw new Error('Executor recusado.');
   let now = options.now ?? new Date();
   const reserved = await db.$transaction(async (tx) => {
     await lockAccount(tx, context.accountId);
@@ -56,8 +75,30 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     }
     const body = deliveryBody.safeParse(intent.body);
     if (!reason && !body.success) reason = 'payload_invalid';
+    if (!reason && transport.kind === 'meta') {
+      const payload = event?.payload as { text?: unknown; mediaId?: unknown; echo?: unknown } | null;
+      const approved = event && payload && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
+        mediaId: transport.reelId, keyword: 'prévia', approvedText: META_PILOT_APPROVED_TEXT }, {
+        account: { professionalId: account.professionalId },
+        event: { professionalId: account.professionalId, kind: event.kind as 'comment',
+          mediaId: typeof payload.mediaId === 'string' ? payload.mediaId : null,
+          text: typeof payload.text === 'string' ? payload.text : null, echo: payload.echo === true },
+        intent: { source: intent.source as 'automatic', effect: intent.effect as 'private_reply', body: body.data! },
+      }).allowed;
+      const recipe = automation ? recipeConfig.safeParse(automation.config) : null;
+      if (account.id !== transport.accountId || account.professionalId !== transport.professionalId ||
+          account.webhookAppAlias !== transport.webhookAlias || intent.source !== 'automatic' ||
+          intent.effect !== 'private_reply' || !event?.externalId.match(/^comment:[1-9]\d*$/) ||
+          event.externalId !== `comment:${transport.commentId}` ||
+          automation?.mediaId !== transport.reelId || !approved || !recipe?.success ||
+          !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled || recipe.data.publicReplyEnabled ||
+          recipe.data.followRequired || recipe.data.link || recipe.data.terms.length !== 1 ||
+          recipe.data.terms[0] !== 'prévia' || recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
+          recipe.data.finalMessage) reason = 'pilot_policy_denied';
+    }
+    let accessToken: string | null = null;
     if (!reason) {
-      try { vault.decrypt(context.accountId, credential!.generation, credential!.keyVersion, credential!.ciphertext); }
+      try { accessToken = vault.decrypt(context.accountId, credential!.generation, credential!.keyVersion, credential!.ciphertext); }
       catch { reason = 'connection_unavailable'; }
     }
     if (reason) {
@@ -88,25 +129,37 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     const attempt = await tx.deliveryAttempt.create({ data: { accountId: context.accountId, intentId: intent.id, number, startedAt: now } });
     await tx.deliveryIntent.update({ where: { accountId_id: { accountId: context.accountId, id: intent.id } },
       data: { status: 'sending', reservedUntil: new Date(now.getTime() + (options.leaseMs ?? 30_000)), reason: null, nextAttemptAt: null } });
-    return { intent, attempt, body: body.data! };
+    return { intent, attempt, body: body.data!, accessToken, commentExternalId: event?.externalId.slice('comment:'.length) ?? '' };
   });
   if (reserved) {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let status: 'accepted' | 'rejected' | 'unknown' | 'pending' = 'unknown';
+    let status: 'accepted' | 'rejected' | 'unknown' | 'pending' | 'blocked' = 'unknown';
     let acceptedId: string | null = null;
     let reason = 'ambiguous_result';
     let rateLimited = false;
     try {
-      const result = await Promise.race([
-        transport.send({ ...context, attemptId: reserved.attempt.id, effect: reserved.intent.effect, body: reserved.body, signal: controller.signal }),
-        new Promise<never>((_, reject) => { timer = setTimeout(() => { reject(new Error('Prazo fictício excedido.')); controller.abort(); }, options.timeoutMs ?? 5000); }),
-      ]);
-      status = result.kind;
-      if (result.kind === 'accepted') { acceptedId = result.id; reason = 'synthetic_accepted'; }
-      else reason = 'synthetic_rejected';
+      if (transport.kind === 'meta') {
+        const result = await sendMetaPrivateReply({ graphVersion: transport.graphVersion,
+          professionalId: transport.professionalId, accessToken: reserved.accessToken!,
+          approvedText: META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
+          commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
+        status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
+          result.kind === 'rejected' ? 'rejected' : 'blocked';
+        acceptedId = result.kind === 'accepted' ? result.messageId : null;
+        reason = result.kind === 'accepted' ? 'meta_api_accepted' : result.kind === 'rejected' ? 'meta_rejected' :
+          result.kind === 'confirmed_before_send' ? 'meta_preflight_failed' : 'meta_result_ambiguous';
+      } else {
+        const result = await Promise.race([
+          transport.send({ ...context, attemptId: reserved.attempt.id, effect: reserved.intent.effect, body: reserved.body, signal: controller.signal }),
+          new Promise<never>((_, reject) => { timer = setTimeout(() => { reject(new Error('Prazo fictício excedido.')); controller.abort(); }, options.timeoutMs ?? 5000); }),
+        ]);
+        status = result.kind;
+        if (result.kind === 'accepted') { acceptedId = result.id; reason = 'synthetic_accepted'; }
+        else reason = 'synthetic_rejected';
+      }
     } catch (error) {
-      if (error instanceof BeforeSendFailure) {
+      if (transport.kind === 'synthetic' && error instanceof BeforeSendFailure) {
         status = reserved.attempt.number < 3 ? 'pending' : 'rejected';
         rateLimited = error.rateLimited;
         reason = rateLimited ? 'confirmed_rate_limit' : 'confirmed_before_send';

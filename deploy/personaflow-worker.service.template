@@ -1,0 +1,24 @@
+[Unit]
+Description=PersonaFlow inbound and guarded delivery worker
+Requires=personaflow-postgres.service
+After=personaflow-postgres.service
+
+[Service]
+Type=simple
+WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
+Environment=NODE_ENV=production
+EnvironmentFile=%h/.config/personaflow/personaflow.env
+ExecStartPre=/usr/bin/mkdir -p %h/.local/state/personaflow/logs
+ExecStart=/home/pedro/.local/bin/node --import tsx src/jobs/worker.ts
+StandardOutput=append:%h/.local/state/personaflow/logs/worker.log
+StandardError=append:%h/.local/state/personaflow/logs/worker.log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/personaflow
+
+[Install]
+WantedBy=default.target

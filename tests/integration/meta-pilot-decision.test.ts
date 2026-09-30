@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createPrisma } from '../../src/shared/db';
 import { createBoss } from '../../src/jobs/queue';
-import { DELIVERY_QUEUE } from '../../src/modules/delivery/ledger';
+import { DELIVERY_QUEUE, META_PILOT_DELIVERY_QUEUE } from '../../src/modules/delivery/ledger';
 import { emptyRecipe } from '../../src/modules/automations/recipe';
 import { decideAutomation } from '../../src/modules/automations/decision';
 import { processInboxEvent } from '../../src/modules/inbox/ingestion';
@@ -27,7 +27,7 @@ async function fixture(patch: { mediaId?: string; text?: string; config?: object
   return { accountId, conversationId: conversation.id, eventId: event.id };
 }
 
-beforeAll(async () => { await boss.start(); await boss.createQueue(DELIVERY_QUEUE); });
+beforeAll(async () => { await boss.start(); await boss.createQueue(DELIVERY_QUEUE); await boss.createQueue(META_PILOT_DELIVERY_QUEUE); });
 afterEach(async () => {
   vi.unstubAllEnvs();
   await db.instagramAccount.deleteMany({ where: { id: { in: [...createdAccountIds] } } });
