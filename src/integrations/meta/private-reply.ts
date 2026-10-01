@@ -32,6 +32,8 @@ export type MetaPrivateReplyResult =
 export interface MetaPrivateReplyOptions {
   readonly fetch?: typeof fetch;
   readonly timeoutMs?: number;
+  /** Restricted experiment on an explicitly selected test comment, never a retry. */
+  readonly button?: { readonly title: string; readonly url: string };
 }
 
 function validConfiguration(config: MetaPrivateReplyConfig) {
@@ -96,6 +98,9 @@ export async function sendMetaPrivateReply(config: MetaPrivateReplyConfig, comma
   if (command.professionalId !== config.professionalId) return { kind: 'confirmed_before_send', reason: 'professional_account_mismatch' };
   if (!metaIdPattern.test(command.commentExternalId)) return { kind: 'confirmed_before_send', reason: 'invalid_comment_external_id' };
   if (command.text !== config.approvedText) return { kind: 'confirmed_before_send', reason: 'text_not_approved' };
+  if (options.button && (options.button.title !== 'Pedir minha prévia' ||
+      options.button.url !== 'https://somoskyber.com.br/suaprevia'))
+    return { kind: 'confirmed_before_send', reason: 'invalid_configuration' };
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!validTimeout(timeoutMs)) return { kind: 'confirmed_before_send', reason: 'invalid_configuration' };
@@ -109,7 +114,11 @@ export async function sendMetaPrivateReply(config: MetaPrivateReplyConfig, comma
     const response = await request(`https://graph.instagram.com/${config.graphVersion}/${config.professionalId}/messages`, {
       method: 'POST',
       headers: { authorization: `Bearer ${config.accessToken}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ recipient: { comment_id: command.commentExternalId }, message: { text: command.text } }),
+      body: JSON.stringify({ recipient: { comment_id: command.commentExternalId }, message: options.button
+        ? { attachment: { type: 'template', payload: { template_type: 'button',
+          text: command.text.replace(/\nhttps:\/\/somoskyber\.com\.br\/suaprevia$/, '').replace('toque no link', 'toque no botão'),
+          buttons: [{ type: 'web_url', title: options.button.title, url: options.button.url }] } } }
+        : { text: command.text } }),
       signal: controller.signal,
     });
     if (response.status >= 400 && response.status < 500) return { kind: 'rejected', reason: 'http_4xx', status: response.status };

@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { createPrisma } from '../shared/db';
 import { emptyRecipe } from '../modules/automations/recipe';
 import { LOCAL_META_SCOPES } from '../integrations/meta/oauth-contract';
-import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_LEGACY_LINK_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
 
 const settings = z.object({
   PERSONAFLOW_MODE: z.literal('production'),
@@ -18,6 +18,7 @@ const settings = z.object({
 const recipe = { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT };
 const publicRecipe = { ...recipe, publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT };
 const linkRecipe = { ...publicRecipe, introduction: META_CAMPAIGN_APPROVED_TEXT };
+const previousLinkRecipe = { ...publicRecipe, introduction: META_CAMPAIGN_LEGACY_LINK_TEXT };
 const ruleName = 'Kyber · prévia · campanha';
 
 async function main() {
@@ -44,6 +45,7 @@ async function main() {
       if (rules.length > 1 || (rules[0] && (rules[0].name !== ruleName ||
           !(isDeepStrictEqual(rules[0].config, linkMode ? linkRecipe : publicMode ? publicRecipe : recipe) ||
             (linkMode && isDeepStrictEqual(rules[0].config, publicRecipe)) ||
+            (linkMode && isDeepStrictEqual(rules[0].config, previousLinkRecipe)) ||
             (publicMode && isDeepStrictEqual(rules[0].config, recipe))))))
         throw new Error('Outra regra ou configuração divergente atende este Reel.');
       let rule = rules[0];
@@ -53,7 +55,7 @@ async function main() {
           status: { in: ['pending', 'sending'] } } });
         if (unfinished) throw new Error('Há envios anteriores pendentes; aguarde antes de trocar o texto.');
       }
-      if (mode === '--link-arm' && rule && isDeepStrictEqual(rule.config, publicRecipe)) rule = await tx.automation.update({
+      if (mode === '--link-arm' && rule && !isDeepStrictEqual(rule.config, linkRecipe)) rule = await tx.automation.update({
         where: { accountId_id: { accountId: account.id, id: rule.id } },
         data: { config: linkRecipe, revision: { increment: 1 } },
       });

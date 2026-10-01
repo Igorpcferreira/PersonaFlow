@@ -16,6 +16,24 @@ const command: MetaPrivateReplyCommand = {
 const response = (status: number, body = '') => new Response(body, { status, headers: { 'content-type': 'application/json' } });
 
 describe('Meta private reply transport', () => {
+  it('envia o botão restrito uma vez e não tenta texto após rejeição', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(400));
+    await expect(sendMetaPrivateReply(config, command, { fetch,
+      button: { title: 'Pedir minha prévia', url: 'https://somoskyber.com.br/suaprevia' } }))
+      .resolves.toEqual({ kind: 'rejected', reason: 'http_4xx', status: 400 });
+    const body = JSON.parse(fetch.mock.calls[0][1]!.body as string);
+    expect(body.message.attachment.payload.buttons).toEqual([
+      { type: 'web_url', title: 'Pedir minha prévia', url: 'https://somoskyber.com.br/suaprevia' },
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('recusa destino de botão diferente antes do envio', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    await expect(sendMetaPrivateReply(config, command, { fetch,
+      button: { title: 'Pedir minha prévia', url: 'https://example.com' } }))
+      .resolves.toEqual({ kind: 'confirmed_before_send', reason: 'invalid_configuration' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('chama uma vez o endpoint oficial com a conta, comentário e texto exatos', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(200, '{"message_id":"mid.1"}'));
 

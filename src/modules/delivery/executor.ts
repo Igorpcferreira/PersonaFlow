@@ -171,7 +171,12 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
             professionalId: transport.professionalId, accessToken: reserved.accessToken!,
             approvedText: reserved.intent.effect === 'public_reply' ? publicReplyForComment(`comment:${reserved.commentExternalId}`) ?? '' :
               transport.scope === 'campaign' ? META_CAMPAIGN_APPROVED_TEXT : META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
-            commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
+            commentExternalId: reserved.commentExternalId, text: reserved.body.text }, {
+              ...transport.options,
+              ...(transport.scope === 'campaign' && reserved.intent.effect === 'private_reply' &&
+                process.env.META_INSTAGRAM_BUTTON_TEST_COMMENT_ID === reserved.commentExternalId
+                ? { button: { title: 'Pedir minha prévia', url: 'https://somoskyber.com.br/suaprevia' } } : {}),
+            });
           status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
             result.kind === 'rejected' ? 'rejected' : 'blocked';
           acceptedId = result.kind === 'accepted' ? result.messageId : null;

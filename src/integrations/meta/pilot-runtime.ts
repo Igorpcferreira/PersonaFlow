@@ -5,11 +5,13 @@ import type { CanonicalEvent } from './webhook';
 import { validateMetaPilot } from './pilot-policy';
 
 export const META_PILOT_APPROVED_TEXT = 'Oi! Vi seu pedido de prévia. Me manda o @ do seu negócio ou algumas fotos para eu entender o que você faz? Eu continuo por aqui depois.';
-export const META_CAMPAIGN_WHATSAPP_URL = (() => {
+export const META_CAMPAIGN_WHATSAPP_URL = 'https://somoskyber.com.br/suaprevia';
+// Texto anterior preservado apenas para a migração delimitada da regra existente.
+export const META_CAMPAIGN_LEGACY_LINK_TEXT = (() => {
   const url = new URL('https://somoskyber.com.br/fale');
   url.searchParams.set('origem', 'instagram-reels-previa');
   url.searchParams.set('text', 'Olá! Vim pelo Reels da Kyber e quero uma prévia grátis do meu site. Vou enviar as informações e os materiais do meu negócio.');
-  return url.toString();
+  return `Oi! Vi seu pedido de prévia. Para começar, toque no link e envie o @ do seu negócio ou algumas fotos pelo WhatsApp. Você falará diretamente com a Kyber:\n${url.toString()}`;
 })();
 export const META_CAMPAIGN_APPROVED_TEXT = `Oi! Vi seu pedido de prévia. Para começar, toque no link e envie o @ do seu negócio ou algumas fotos pelo WhatsApp. Você falará diretamente com a Kyber:\n${META_CAMPAIGN_WHATSAPP_URL}`;
 export const META_CAMPAIGN_PUBLIC_REPLY_TEXT = 'Te mandei uma mensagem no direct para continuar seu pedido de prévia.';

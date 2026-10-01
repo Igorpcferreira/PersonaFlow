@@ -67,11 +67,10 @@ describe('runtime do piloto Meta', () => {
     expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [campaignIntent])).toBe(false);
   });
 
-  it('mantém a rota de WhatsApp e identifica a campanha Kyber', () => {
+  it('usa somente o endereço curto na DM', () => {
     const url = new URL(META_CAMPAIGN_WHATSAPP_URL);
-    expect(`${url.origin}${url.pathname}`).toBe('https://somoskyber.com.br/fale');
-    expect(url.searchParams.get('origem')).toBe('instagram-reels-previa');
-    expect(url.searchParams.get('text')).toContain('Reels da Kyber');
+    expect(`${url.origin}${url.pathname}`).toBe('https://somoskyber.com.br/suaprevia');
+    expect(url.search).toBe('');
     expect(META_CAMPAIGN_APPROVED_TEXT).toContain(META_CAMPAIGN_WHATSAPP_URL);
   });
 
