@@ -50,7 +50,8 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
   });
 
   it('modo de campanha aceita comentários diferentes somente no Reel aprovado e sem opcionais', async () => {
-    const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003' });
+    const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003', text: 'PREVIA',
+      config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT } });
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId);
     vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', '17890000000000003');

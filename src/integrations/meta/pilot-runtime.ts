@@ -62,7 +62,7 @@ export function isApprovedFutureMetaPilotRecipe(config: {
   finalMessage: string;
   link: string;
 }) {
-  return config.terms.length === 1 && config.terms[0] === 'prévia' &&
+  return config.terms.length === 2 && config.terms.includes('prévia') && config.terms.includes('previa') &&
     config.introduction === META_PILOT_APPROVED_TEXT && !config.publicReplyEnabled &&
     !config.buttonEnabled && !config.followRequired && !config.finalMessage && !config.link;
 }
@@ -90,7 +90,7 @@ export function allowsMetaPilotDecision(env: Record<string, string | undefined>,
         context.account.professionalId !== campaign.professionalId ||
         context.account.webhookAppAlias !== campaign.webhookAlias) return false;
     return validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
-      keyword: campaign.keyword, approvedText: campaign.approvedText }, {
+      keyword: campaign.keyword, acceptUnaccented: true, approvedText: campaign.approvedText }, {
       account: { professionalId: context.account.professionalId },
       event: { professionalId: context.account.professionalId, kind: context.event.kind as CanonicalEvent['kind'], mediaId: context.payload.mediaId,
         text: context.payload.text, echo: context.payload.echo }, intent: planned[0],

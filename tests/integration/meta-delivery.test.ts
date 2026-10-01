@@ -103,9 +103,11 @@ describe('envio Meta restrito ao piloto', () => {
   it('campanha processa comentários distintos do Reel aprovado, mas bloqueia outro Reel antes do HTTP', async () => {
     const f = await fixture();
     const campaignReel = '17890000000000003';
-    await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: { mediaId: campaignReel } });
+    await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT },
+    } });
     await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } }, data: {
-      payload: { actorId: `contact-${randomUUID()}`, text: 'Quero prévia', mediaId: campaignReel, echo: false, buttonPayload: null },
+      payload: { actorId: `contact-${randomUUID()}`, text: 'Quero PREVIA', mediaId: campaignReel, echo: false, buttonPayload: null },
     } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');

@@ -7,10 +7,14 @@ describe('coletor de comentários Meta', () => {
   it('consulta somente o Reel configurado e devolve apenas IDs e horários de comentários elegíveis', async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ data: [
       { id: '17890000000000002', text: 'Quero uma prévia', timestamp: '2026-10-01T12:00:00+00:00', from: { id: '17890000000000003' } },
+      { id: '17890000000000006', text: 'PREVIA', timestamp: '2026-10-01T12:02:00+00:00', from: { id: '17890000000000007' } },
       { id: '17890000000000004', text: 'Legal', timestamp: '2026-10-01T12:01:00+00:00', from: { id: '17890000000000005' } },
     ] }), { status: 200 }));
-    const result = await pollEligibleMetaComments(config, request);
-    expect(result.comments).toEqual([{ commentId: '17890000000000002', occurredAt: '2026-10-01T12:00:00.000Z' }]);
+    const result = await pollEligibleMetaComments({ ...config, acceptUnaccented: true }, request);
+    expect(result.comments).toEqual([
+      { commentId: '17890000000000002', occurredAt: '2026-10-01T12:00:00.000Z' },
+      { commentId: '17890000000000006', occurredAt: '2026-10-01T12:02:00.000Z' },
+    ]);
     expect(result.ignored).toBe(1);
     expect(JSON.stringify(result.comments)).not.toMatch(/Quero|17890000000000003/);
     const [url, init] = request.mock.calls[0];

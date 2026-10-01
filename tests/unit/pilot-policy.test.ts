@@ -15,6 +15,22 @@ const context = (): MetaPilotContext => ({
 });
 
 describe('PF-pilot: política restrita para a primeira DM da Kyber', () => {
+  it.each(['prévia', 'PRÉVIA', 'Previa', 'PREVIA', 'pre\u0301via', 'quero uma previa!'])(
+    'aceita a grafia %s somente na campanha', (text) => {
+      const input = { ...context(), event: { ...context().event, text } };
+      expect(validateMetaPilot({ ...config, acceptUnaccented: true }, input)).toEqual({ allowed: true });
+    });
+
+  it.each(['prévia2', 'previamente', 'preview', 'imprévia', 'sem pedido'])(
+    'não aceita %s como palavra-chave da campanha', (text) => {
+      const input = { ...context(), event: { ...context().event, text } };
+      expect(validateMetaPilot({ ...config, acceptUnaccented: true }, input)).toEqual({ allowed: false, reason: 'keyword_not_found' });
+    });
+
+  it('preserva o teste anterior com a grafia acentuada', () => {
+    expect(validateMetaPilot(config, { ...context(), event: { ...context().event, text: 'previa' } }))
+      .toEqual({ allowed: false, reason: 'keyword_not_found' });
+  });
   it('permite somente o comentário elegível no Reel e texto aprovados', () => {
     expect(validateMetaPilot(config, context())).toEqual({ allowed: true });
   });

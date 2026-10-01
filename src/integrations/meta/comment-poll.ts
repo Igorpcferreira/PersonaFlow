@@ -21,6 +21,7 @@ export type MetaCommentPollConfig = {
   readonly professionalId: string;
   readonly reelId: string;
   readonly accessToken: string;
+  readonly acceptUnaccented?: boolean;
 };
 
 type EligibleComment = { readonly id: string; readonly occurredAt: Date; readonly actorId: string; readonly text: string };
@@ -62,7 +63,8 @@ export async function pollEligibleMetaComments(config: MetaCommentPollConfig, re
     if (!parsed.success) throw new Error(`Formato da resposta Meta inesperado (comments:${parsed.error.issues.map((issue) => issue.path.join('.')).join(',').slice(0, 160)}).`);
     for (const item of parsed.data.data) {
       const occurredAt = new Date(item.timestamp);
-      if (!Number.isFinite(occurredAt.getTime()) || occurredAt.getTime() > Date.now() + 300_000 || !matchingTerm(item.text, ['prévia'])) {
+      if (!Number.isFinite(occurredAt.getTime()) || occurredAt.getTime() > Date.now() + 300_000 ||
+          !matchingTerm(item.text, config.acceptUnaccented ? ['prévia', 'previa'] : ['prévia'])) {
         ignored += 1;
         continue;
       }

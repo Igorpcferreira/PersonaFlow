@@ -83,7 +83,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     if (!reason && transport.kind === 'meta') {
       const payload = event?.payload as { text?: unknown; mediaId?: unknown; echo?: unknown } | null;
       const approved = event && payload && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
-        mediaId: transport.reelId, keyword: 'prévia', approvedText: META_PILOT_APPROVED_TEXT }, {
+        mediaId: transport.reelId, keyword: 'prévia', acceptUnaccented: transport.scope === 'campaign', approvedText: META_PILOT_APPROVED_TEXT }, {
         account: { professionalId: account.professionalId },
         event: { professionalId: account.professionalId, kind: event.kind as 'comment',
           mediaId: typeof payload.mediaId === 'string' ? payload.mediaId : null,
@@ -98,8 +98,9 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
           (transport.scope === 'test-comment' && !selectedComment) ||
           automation?.mediaId !== transport.reelId || !approved || !recipe?.success ||
           !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled || recipe.data.publicReplyEnabled ||
-          recipe.data.followRequired || recipe.data.link || recipe.data.terms.length !== 1 ||
-          recipe.data.terms[0] !== 'prévia' || recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
+          recipe.data.followRequired || recipe.data.link ||
+          (transport.scope === 'test-comment' && (recipe.data.terms.length !== 1 || recipe.data.terms[0] !== 'prévia')) ||
+          recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
           recipe.data.finalMessage || (transport.scope === 'campaign' && !isApprovedFutureMetaPilotRecipe(recipe.data))) reason = 'pilot_policy_denied';
     }
     let accessToken: string | null = null;

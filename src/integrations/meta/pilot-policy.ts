@@ -7,6 +7,7 @@ export interface MetaPilotConfig {
   readonly professionalId: number | bigint;
   readonly mediaId: string;
   readonly keyword: 'prévia';
+  readonly acceptUnaccented?: boolean;
   readonly approvedText: string;
 }
 
@@ -51,7 +52,7 @@ export function validateMetaPilot(config: MetaPilotConfig, context: MetaPilotCon
   if (context.account.professionalId !== professionalId || context.event.professionalId !== professionalId) return deny('professional_account_mismatch');
   if (context.event.mediaId !== config.mediaId) return deny('reel_mismatch');
   if (context.event.kind !== 'comment' || context.event.text === null) return deny('not_an_eligible_comment');
-  if (!matchingTerm(context.event.text, [config.keyword])) return deny('keyword_not_found');
+  if (!matchingTerm(context.event.text, config.acceptUnaccented ? ['prévia', 'previa'] : [config.keyword])) return deny('keyword_not_found');
   if (context.event.echo) return deny('echo_event');
   if (context.intent.source !== 'automatic') return deny('manual_intent');
   if (context.intent.effect !== 'private_reply') return deny('effect_not_private_reply');
