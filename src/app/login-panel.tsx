@@ -24,7 +24,7 @@ function ProductionPilot() {
       <p role="status">Consultando a conexão…</p> : <>
         <p>Instagram: {status.connected ? 'conectado' : status.prepared ? 'aguardando sua autorização' : 'preparação pendente'}.</p>
         <p>Comentários: {status.subscribed ? 'assinatura confirmada' : 'assinatura ainda não confirmada'}.</p>
-        <p>Respostas automáticas: {status.sendingEnabled ? 'habilitadas' : 'desligadas'}.</p>
+        <p>Modo de envio: {status.sendingEnabled ? 'habilitado (entrega ainda depende de verificação)' : 'desligado'}.</p>
         {status.prepared && !status.connected && <a href="/api/meta/oauth/start">Conectar @somoskyber ao PersonaFlow</a>}
       </>}
   </div>;

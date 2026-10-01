@@ -1,6 +1,6 @@
 # Handoff
 
-**Estado mais recente:** a atualização do piloto no fim de `docs/STATUS.md` prevalece sobre o retrato histórico abaixo. Em 30/09 à noite, GitHub autenticou o operador, a Meta aceitou o webhook HTTPS, somente comentários e mensagens ficaram assinados e a conta piloto foi preparada sem habilitar envio. O consentimento Instagram ainda está na tela de permissões. A conta não recebe eventos até assinatura/publicação aplicáveis; não há token, Reel ou DM real.
+**Estado mais recente:** a atualização do piloto no fim de `docs/STATUS.md` prevalece sobre o retrato histórico abaixo. Em 30/09 à noite, GitHub autenticou o operador, a Meta aceitou o webhook HTTPS, `@somoskyber` concedeu OAuth e a assinatura de comentários foi confirmada por GET e pelo painel Meta. O app ainda não está publicado; não há Reel escolhido, evento real ou DM. O envio segue desligado. O próximo passo é resolver os requisitos de análise/publicação da Meta sem ampliar escopos e, quando Pedro publicar o Reel, testar um comentário controlado antes de qualquer envio.
 
 Atualizado em **30/09/2026**. **Goal do MVP local concluído; Pedro pediu continuidade para uso real da Kyber.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização local anterior foi registrada em PF-003/PROXIMA_SESSAO; o novo pedido de 30/09 amplia o objetivo, mas envio externo depende de fluxo e conta concretos confirmados.
 
