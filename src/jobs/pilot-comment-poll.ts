@@ -54,7 +54,8 @@ async function main() {
 if (process.argv[1]?.endsWith('pilot-comment-poll.ts')) main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : '';
   const safe = /^Consulta de comentários recusada pela Meta \(HTTP [1-5]\d\d\)\.$/.test(message) ||
-    message === 'Conexão da conta piloto indisponível.' || message === 'Formato da resposta Meta inesperado (comments).';
+    message === 'Conexão da conta piloto indisponível.' ||
+    /^Formato da resposta Meta inesperado \(comments:[a-zA-Z0-9.,]{0,160}\)\.$/.test(message);
   console.error(safe ? message : 'Consulta de comentários indisponível; detalhes omitidos.');
   process.exitCode = 1;
 });
