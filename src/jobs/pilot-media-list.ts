@@ -14,15 +14,19 @@ const mediaSchema = z.object({ data: z.array(z.object({
   media_type: z.string().optional(),
   media_product_type: z.string().optional(),
   permalink: z.string().url().optional(),
-  timestamp: z.string().datetime({ offset: true }).optional(),
+  timestamp: z.string().max(64).optional(),
 })).max(25) });
 
+let diagnosticStage = 'arguments';
 async function main() {
   if (process.argv.length !== 3 || process.argv[2] !== '--list')
     throw new Error('Uso: tsx src/jobs/pilot-media-list.ts --list');
+  diagnosticStage = 'configuration';
   const config = settingsSchema.parse(process.env);
+  diagnosticStage = 'database';
   const db = createPrisma();
   try {
+    diagnosticStage = 'credential';
     const account = await db.instagramAccount.findUniqueOrThrow({
       where: { id: config.META_INSTAGRAM_PILOT_ACCOUNT_ID }, include: { credential: true },
     });
@@ -35,9 +39,13 @@ async function main() {
     const url = new URL(`https://graph.instagram.com/${config.META_INSTAGRAM_GRAPH_VERSION}/${account.professionalId}/media`);
     url.searchParams.set('fields', 'id,media_type,media_product_type,permalink,timestamp');
     url.searchParams.set('limit', '25');
+    diagnosticStage = 'api';
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(`Consulta de mídias recusada pela Meta (HTTP ${response.status}).`);
-    const parsed = mediaSchema.parse(await response.json());
+    diagnosticStage = 'response';
+    const parsedResult = mediaSchema.safeParse(await response.json());
+    if (!parsedResult.success) throw new Error(`Formato da resposta Meta inesperado (${parsedResult.error.issues.map((issue) => issue.path.join('.')).join(',').slice(0, 200)}).`);
+    const parsed = parsedResult.data;
     const reels = parsed.data.filter((item) => item.media_product_type === 'REELS' ||
       (item.media_type === 'VIDEO' && item.permalink?.includes('/reel/')));
     console.log(JSON.stringify({ event: 'meta.pilot.reels', count: reels.length,
@@ -45,7 +53,11 @@ async function main() {
   } finally { await db.$disconnect(); }
 }
 
-main().catch(() => {
-  console.error('Não foi possível listar Reels da conta piloto; detalhes da Meta omitidos.');
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : '';
+  const safe = /^Consulta de mídias recusada pela Meta \(HTTP [1-5]\d\d\)\.$/.test(message) ||
+    /^Formato da resposta Meta inesperado \([a-zA-Z0-9.,]{1,200}\)\.$/.test(message) ||
+    message === 'Conexão da conta piloto indisponível.';
+  console.error(safe ? message : `Não foi possível listar Reels da conta piloto na etapa ${diagnosticStage}; detalhes omitidos.`);
   process.exitCode = 1;
 });
