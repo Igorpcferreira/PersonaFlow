@@ -16,6 +16,10 @@ p { line-height: 1.65; }
 .error { border-left: 3px solid #b65735; padding: 10px 15px; background: #fff2eb; color: #873e23; }
 @media (max-width: 560px) { .entry { padding: 16px; } .login-card { padding: 28px; } h1 { font-size: 2.1rem; } }
 .account-chooser { margin: 24px 0; }
+.pilot-status { margin: 22px 0; padding: 18px; border: 1px solid #dbe3df; border-radius: 12px; background: #f8faf8; }
+.pilot-status h2 { margin: 0 0 12px; font-size: 1.15rem; }
+.pilot-status p { margin: 8px 0; }
+.pilot-status a { display: inline-block; margin-top: 12px; font-weight: 650; }
 .account-cards { display: grid; gap: 12px; }
 .account-card { color: #174e46; text-decoration: none; border: 1px solid #dbe3df; border-radius: 12px; padding: 18px; display: grid; gap: 8px; }
 .account-card:hover { background: #eef5ef; }
