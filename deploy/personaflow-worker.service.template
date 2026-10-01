@@ -7,8 +7,9 @@ After=personaflow-postgres.service
 Type=simple
 WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
 Environment=NODE_ENV=production
+UMask=0077
 EnvironmentFile=%h/.config/personaflow/personaflow.env
-ExecStartPre=/usr/bin/mkdir -p %h/.local/state/personaflow/logs
+ExecStartPre=/usr/bin/install -d -m 0700 %h/.local/state/personaflow/logs
 ExecStart=/home/pedro/.local/bin/node --import tsx src/jobs/worker.ts
 StandardOutput=append:%h/.local/state/personaflow/logs/worker.log
 StandardError=append:%h/.local/state/personaflow/logs/worker.log

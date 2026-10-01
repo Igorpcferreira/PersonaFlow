@@ -6,8 +6,8 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
 EnvironmentFile=%h/.config/personaflow/postgres.env
-ExecStart=/usr/bin/docker compose --env-file %h/.config/personaflow/postgres.env -f deploy/postgres.compose.yml up -d
-ExecStop=/usr/bin/docker compose --env-file %h/.config/personaflow/postgres.env -f deploy/postgres.compose.yml stop
+ExecStart=/usr/bin/sg docker -c "/usr/bin/docker compose --env-file %h/.config/personaflow/postgres.env -f deploy/postgres.compose.yml up -d"
+ExecStop=/usr/bin/sg docker -c "/usr/bin/docker compose --env-file %h/.config/personaflow/postgres.env -f deploy/postgres.compose.yml stop"
 TimeoutStartSec=90
 TimeoutStopSec=45
 

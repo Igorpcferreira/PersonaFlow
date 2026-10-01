@@ -10,8 +10,9 @@ Environment=NODE_ENV=production
 Environment=PORT=3210
 Environment=HOSTNAME=127.0.0.1
 Environment=NEXT_TELEMETRY_DISABLED=1
+UMask=0077
 EnvironmentFile=%h/.config/personaflow/personaflow.env
-ExecStartPre=/usr/bin/mkdir -p %h/.local/state/personaflow/logs
+ExecStartPre=/usr/bin/install -d -m 0700 %h/.local/state/personaflow/logs
 ExecStart=/home/pedro/.local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3210
 StandardOutput=append:%h/.local/state/personaflow/logs/web.log
 StandardError=append:%h/.local/state/personaflow/logs/web.log
