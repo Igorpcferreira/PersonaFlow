@@ -13,6 +13,17 @@ export const META_CAMPAIGN_WHATSAPP_URL = (() => {
 })();
 export const META_CAMPAIGN_APPROVED_TEXT = `Oi! Vi seu pedido de prévia. Para começar, toque no link e envie o @ do seu negócio ou algumas fotos pelo WhatsApp. Você falará diretamente com a Kyber:\n${META_CAMPAIGN_WHATSAPP_URL}`;
 export const META_CAMPAIGN_PUBLIC_REPLY_TEXT = 'Te mandei uma mensagem no direct para continuar seu pedido de prévia.';
+export const META_CAMPAIGN_PUBLIC_REPLY_TEXTS = [
+  META_CAMPAIGN_PUBLIC_REPLY_TEXT,
+  'Te enviei o link para pedir sua prévia no direct.',
+  'Seu próximo passo para a prévia está na mensagem que te mandei no direct.',
+] as const;
+
+/** Stable thirds: replay of a comment never picks a different public answer. */
+export function publicReplyForComment(externalId: string): string | null {
+  const match = /^comment:([1-9]\d*)$/.exec(externalId);
+  return match ? META_CAMPAIGN_PUBLIC_REPLY_TEXTS[Number(BigInt(match[1]) % 3n)] : null;
+}
 
 const configSchema = z.object({
   META_INSTAGRAM_PILOT_ACCOUNT_ID: z.uuid(),
@@ -106,7 +117,7 @@ export function allowsMetaPilotDecision(env: Record<string, string | undefined>,
         text: context.payload.text, echo: context.payload.echo }, intent: planned[0],
     }).allowed;
     return privateAllowed && (planned.length === 1 || (planned[1].source === 'automatic' &&
-      planned[1].effect === 'public_reply' && planned[1].body.text === META_CAMPAIGN_PUBLIC_REPLY_TEXT &&
+      planned[1].effect === 'public_reply' && planned[1].body.text === publicReplyForComment(context.event.externalId) &&
       planned[1].body.button === undefined && planned[1].body.link === undefined));
   }
   const parsed = configSchema.safeParse(env);

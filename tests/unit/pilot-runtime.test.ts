@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_CAMPAIGN_WHATSAPP_URL, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXTS, META_CAMPAIGN_WHATSAPP_URL, META_PILOT_APPROVED_TEXT, publicReplyForComment, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
 import type { NormalizedInbound } from '../../src/modules/inbox/ingestion';
 
 const env = { PERSONAFLOW_MODE: 'production', META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
@@ -61,7 +61,7 @@ describe('runtime do piloto Meta', () => {
     expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent])).toBe(true);
     expect(allowsMetaPilotDecision(campaign, campaignContext, [intent])).toBe(false);
     expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent,
-      { source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } }])).toBe(true);
+      { source: 'automatic', effect: 'public_reply', body: { text: publicReplyForComment(campaignContext.event.externalId)! } }])).toBe(true);
     expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent,
       { source: 'automatic', effect: 'public_reply', body: { text: 'Outro texto' } }])).toBe(false);
     expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [campaignIntent])).toBe(false);
@@ -73,5 +73,14 @@ describe('runtime do piloto Meta', () => {
     expect(url.searchParams.get('origem')).toBe('instagram-reels-previa');
     expect(url.searchParams.get('text')).toContain('Reels da Kyber');
     expect(META_CAMPAIGN_APPROVED_TEXT).toContain(META_CAMPAIGN_WHATSAPP_URL);
+  });
+
+  it('distribui dez comentários em três respostas sem variar no replay', () => {
+    const replies = Array.from({ length: 10 }, (_, i) => publicReplyForComment(`comment:${1000 + i}`));
+    expect(replies.map((reply) => replies.filter((other) => other === reply).length).sort()).toEqual([3, 3, 3, 3, 3, 3, 4, 4, 4, 4]);
+    expect(new Set(replies)).toEqual(new Set(META_CAMPAIGN_PUBLIC_REPLY_TEXTS));
+    expect(publicReplyForComment('comment:1000')).toBe(publicReplyForComment('comment:1000'));
+    expect(publicReplyForComment('comment:abc')).toBeNull();
+    expect(publicReplyForComment('comment:0')).toBeNull();
   });
 });

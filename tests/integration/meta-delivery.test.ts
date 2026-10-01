@@ -8,7 +8,7 @@ import { recoverExpiredMetaReservations, sweepDeliveryAccount } from '../../src/
 import { TokenVault } from '../../src/modules/accounts/token-vault';
 import { LOCAL_META_SCOPES } from '../../src/integrations/meta/oauth-contract';
 import { emptyRecipe } from '../../src/modules/automations/recipe';
-import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, publicReplyForComment } from '../../src/integrations/meta/pilot-runtime';
 
 const db = createPrisma(), boss = createBoss();
 const professionalId = '17841422211864282', reelId = '17890000000000001', webhookAlias = 'somoskyber-pilot';
@@ -56,7 +56,7 @@ describe('envio Meta restrito ao piloto', () => {
       payload: { ...(original.payload as object), mediaId: campaignReel },
     } });
     const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
-      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: publicReplyForComment(f.event.externalId)! } });
     await db.deliveryIntent.update({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } }, data: { body: { text: META_CAMPAIGN_APPROVED_TEXT } } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
@@ -85,7 +85,7 @@ describe('envio Meta restrito ao piloto', () => {
       payload: { ...(original.payload as object), mediaId: campaignReel },
     } });
     const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
-      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: publicReplyForComment(f.event.externalId)! } });
     await db.deliveryIntent.update({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } }, data: { body: { text: META_CAMPAIGN_APPROVED_TEXT } } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');

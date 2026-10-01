@@ -9,7 +9,7 @@ import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
 import { sendMetaPublicReply } from '../../integrations/meta/public-reply';
-import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_APPROVED_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
@@ -113,7 +113,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
           !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled ||
           recipe.data.followRequired || recipe.data.link ||
           (transport.scope === 'test-comment' && recipe.data.publicReplyEnabled) ||
-          (isCampaignPublic && (!recipe.data.publicReplyEnabled || body.data?.text !== META_CAMPAIGN_PUBLIC_REPLY_TEXT)) ||
+          (isCampaignPublic && (!recipe.data.publicReplyEnabled || body.data?.text !== publicReplyForComment(event.externalId))) ||
           (transport.scope === 'test-comment' && (recipe.data.terms.length !== 1 || recipe.data.terms[0] !== 'prévia')) ||
           recipe.data.introduction !== approvedPrivateText ||
           recipe.data.finalMessage || (transport.scope === 'campaign' && !isApprovedFutureMetaPilotRecipe(recipe.data))) reason = 'pilot_policy_denied';
@@ -169,7 +169,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
         } else {
           const result = await (reserved.intent.effect === 'public_reply' ? sendMetaPublicReply : sendMetaPrivateReply)({ graphVersion: transport.graphVersion,
             professionalId: transport.professionalId, accessToken: reserved.accessToken!,
-            approvedText: reserved.intent.effect === 'public_reply' ? META_CAMPAIGN_PUBLIC_REPLY_TEXT :
+            approvedText: reserved.intent.effect === 'public_reply' ? publicReplyForComment(`comment:${reserved.commentExternalId}`) ?? '' :
               transport.scope === 'campaign' ? META_CAMPAIGN_APPROVED_TEXT : META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
             commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
           status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :

@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { PgBoss } from 'pg-boss';
 import type { NormalizedInbound } from '../inbox/ingestion';
 import { createIntentInTransaction } from '../delivery/ledger';
-import { allowsMetaPilotDecision, isApprovedFutureMetaPilotRecipe, isMetaPilotProduction, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isApprovedFutureMetaPilotRecipe, isMetaPilotProduction, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { LOCAL_RECIPE_CAPABILITIES, matchingTerm, readyRecipe, recipeConfig, textReply } from './recipe';
 import { continueSequence, startSequence } from './sequence';
 
@@ -33,13 +33,15 @@ export async function decideAutomation(tx: Prisma.TransactionClient, boss: PgBos
           button: { title: config.buttonTitle, payload: 'sequence' } } }]
       : [{ source: 'automatic' as const, effect: 'private_reply' as const,
         body: { text: textReply(config), ...(config.link ? { link: config.link } : {}) } }];
-    if (config.publicReplyEnabled) planned.push({ source: 'automatic', effect: 'public_reply', body: { text: config.publicReply } });
+    const publicText = readApprovedFutureMetaPilot(process.env) ? publicReplyForComment(event.externalId) : config.publicReply;
+    if (config.publicReplyEnabled && !publicText) return;
+    if (config.publicReplyEnabled) planned.push({ source: 'automatic', effect: 'public_reply', body: { text: publicText! } });
     if (!allowsMetaPilotDecision(process.env, context, planned)) return;
     if (config.buttonEnabled) await startSequence(tx, boss, context, rule, config);
     else await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
       automationId: rule.id, source: 'automatic', effect: 'private_reply', body: planned[0].body });
     if (config.publicReplyEnabled) await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
-      automationId: rule.id, source: 'automatic', effect: 'public_reply', body: { text: config.publicReply } });
+      automationId: rule.id, source: 'automatic', effect: 'public_reply', body: { text: publicText! } });
     // Uma intenção por efeito/comentário, mesmo diante de registros conflitantes fora da API.
     return;
   }
