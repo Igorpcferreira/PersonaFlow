@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { PgBoss } from 'pg-boss';
 import type { NormalizedInbound } from '../inbox/ingestion';
 import { createIntentInTransaction } from '../delivery/ledger';
-import { allowsMetaPilotDecision, isMetaPilotProduction } from '../../integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isApprovedFutureMetaPilotRecipe, isMetaPilotProduction, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { LOCAL_RECIPE_CAPABILITIES, matchingTerm, readyRecipe, recipeConfig, textReply } from './recipe';
 import { continueSequence, startSequence } from './sequence';
 
@@ -19,6 +19,7 @@ export async function decideAutomation(tx: Prisma.TransactionClient, boss: PgBos
     const result = recipeConfig.safeParse(rule.config);
     if (!result.success || !readyRecipe(result.data, event.kind) || !matchingTerm(payload.text, result.data.terms)) continue;
     const config = result.data;
+    if (readApprovedFutureMetaPilot(process.env) && !isApprovedFutureMetaPilotRecipe(config)) return;
     if (event.kind !== 'comment') {
       await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
         automationId: rule.id, source: 'automatic', effect: 'automatic_dm', body: { text: textReply(config), ...(config.link ? { link: config.link } : {}) } });

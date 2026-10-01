@@ -8,28 +8,31 @@ import { lockConversation } from '../inbox/control';
 import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
-import { META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId } from '../../integrations/meta/pilot-runtime';
+import { isApprovedFutureMetaPilotRecipe, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
 const contextSchema = z.object({ accountId: z.uuid(), intentId: z.uuid() }).strict();
 type ExecutionOptions = { now?: Date; leaseMs?: number; timeoutMs?: number };
-export type MetaPilotTransport = { readonly kind: 'meta'; readonly graphVersion: string; readonly accountId: string;
+type MetaTransportBase = { readonly kind: 'meta'; readonly graphVersion: string; readonly accountId: string;
   readonly professionalId: string; readonly reelId: string; readonly commentId: string; readonly webhookAlias: string;
   readonly options?: MetaPrivateReplyOptions };
+export type MetaPilotTransport = Omit<MetaTransportBase, 'commentId'> &
+  ({ readonly scope: 'test-comment'; readonly commentId: string } | { readonly scope: 'campaign' });
 const metaTransportSchema = z.object({ kind: z.literal('meta'), graphVersion: z.string().regex(/^v[1-9]\d*\.\d+$/),
   accountId: z.uuid(), professionalId: z.string().regex(/^[1-9]\d*$/), reelId: z.string().regex(/^[1-9]\d*$/),
-  commentId: z.string().regex(/^[1-9]\d*$/),
+  commentId: z.string().regex(/^[1-9]\d*$/).optional(), scope: z.enum(['test-comment', 'campaign']),
   webhookAlias: z.string().regex(/^[a-z0-9-]{1,50}$/) });
 
 function metaPilotTransportEnabled(transport: MetaPilotTransport, context: { accountId: string }) {
-  return process.env.PERSONAFLOW_MODE === 'production' && process.env.PERSONAFLOW_SEND_MODE === 'meta-private-reply' &&
-    context.accountId === transport.accountId && metaTransportSchema.safeParse(transport).success &&
-    process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID === transport.accountId &&
-    process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID === transport.professionalId &&
-    process.env.META_INSTAGRAM_PILOT_REEL_ID === transport.reelId &&
-    metaPilotTestCommentExternalId(process.env) === `comment:${transport.commentId}` &&
-    process.env.META_WEBHOOK_APP_ALIAS === transport.webhookAlias && process.env.META_INSTAGRAM_GRAPH_VERSION === transport.graphVersion;
+  if (process.env.PERSONAFLOW_MODE !== 'production' || context.accountId !== transport.accountId || !metaTransportSchema.safeParse(transport).success ||
+      process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID !== transport.accountId || process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID !== transport.professionalId ||
+      process.env.META_WEBHOOK_APP_ALIAS !== transport.webhookAlias || process.env.META_INSTAGRAM_GRAPH_VERSION !== transport.graphVersion) return false;
+  if (transport.scope === 'test-comment') return process.env.PERSONAFLOW_SEND_MODE === 'meta-private-reply' &&
+    process.env.META_INSTAGRAM_PILOT_REEL_ID === transport.reelId && metaPilotTestCommentExternalId(process.env) === `comment:${transport.commentId}`;
+  const campaign = readApprovedFutureMetaPilot(process.env);
+  return campaign !== null && campaign.accountId === transport.accountId && campaign.professionalId === transport.professionalId &&
+    campaign.reelId === transport.reelId && campaign.webhookAlias === transport.webhookAlias;
 }
 export async function executeIntent(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport,
   context: { accountId: string; intentId: string }, options: ExecutionOptions = {}) {
@@ -88,15 +91,16 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
         intent: { source: intent.source as 'automatic', effect: intent.effect as 'private_reply', body: body.data! },
       }).allowed;
       const recipe = automation ? recipeConfig.safeParse(automation.config) : null;
+      const selectedComment = transport.scope === 'test-comment' && event?.externalId === `comment:${transport.commentId}`;
       if (account.id !== transport.accountId || account.professionalId !== transport.professionalId ||
           account.webhookAppAlias !== transport.webhookAlias || intent.source !== 'automatic' ||
           intent.effect !== 'private_reply' || !event?.externalId.match(/^comment:[1-9]\d*$/) ||
-          event.externalId !== `comment:${transport.commentId}` ||
+          (transport.scope === 'test-comment' && !selectedComment) ||
           automation?.mediaId !== transport.reelId || !approved || !recipe?.success ||
           !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled || recipe.data.publicReplyEnabled ||
           recipe.data.followRequired || recipe.data.link || recipe.data.terms.length !== 1 ||
           recipe.data.terms[0] !== 'prévia' || recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
-          recipe.data.finalMessage) reason = 'pilot_policy_denied';
+          recipe.data.finalMessage || (transport.scope === 'campaign' && !isApprovedFutureMetaPilotRecipe(recipe.data))) reason = 'pilot_policy_denied';
     }
     let accessToken: string | null = null;
     if (!reason) {
@@ -143,7 +147,8 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     try {
       if (transport.kind === 'meta') {
         // Recheck immediately before HTTP so a changed or removed gate cannot use an existing reservation.
-        if (!metaPilotTransportEnabled(transport, context) || reserved.commentExternalId !== transport.commentId) {
+        if (!metaPilotTransportEnabled(transport, context) ||
+            (transport.scope === 'test-comment' && reserved.commentExternalId !== transport.commentId)) {
           status = 'blocked'; reason = 'pilot_policy_denied';
         } else {
           const result = await sendMetaPrivateReply({ graphVersion: transport.graphVersion,

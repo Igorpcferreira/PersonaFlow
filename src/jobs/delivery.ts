@@ -7,6 +7,7 @@ import { executeIntent, type MetaPilotTransport } from '../modules/delivery/exec
 import { FakeTransport, type SyntheticTransport } from '../integrations/meta/fake-transport';
 
 const jobSchema = z.object({ accountId: z.uuid(), intentId: z.uuid() }).strict();
+const META_PILOT_SCAN_BATCH_SIZE = 1;
 async function outcomeTransport(db: Database, accountId: string, intentId: string) {
   const intent = await db.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId, id: intentId } }, select: { simulationOutcome: true } });
   return new FakeTransport(db, z.enum(simulationOutcomes).parse(intent.simulationOutcome));
@@ -18,17 +19,17 @@ export async function sweepDeliveryAccount(db: Database, vault: TokenVault, tran
     { status: 'pending', OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: scanAt } }] },
     { status: 'sending', reservedUntil: { lte: scanAt } },
   ] };
+  const selectedComment = transport?.kind === 'meta' && transport.scope === 'test-comment' ? `comment:${transport.commentId}` : null;
   if (transport?.kind === 'meta') {
-    const selectedComment = `comment:${transport.commentId}`;
     // A public-delivery mode must be implemented as its own worker and authorization contract.
     // While this narrow private-reply pilot is active, accumulated non-selected private replies are terminally refused.
     await db.deliveryIntent.updateMany({ where: { accountId, source: 'automatic', effect: 'private_reply', status: 'pending', OR: [
-      { event: { is: null } }, { event: { is: { externalId: { not: selectedComment } } } },
+      { event: { is: null } }, ...(selectedComment ? [{ event: { is: { externalId: { not: selectedComment } } } }] : []),
     ] }, data: { status: 'blocked', reason: 'pilot_policy_denied', nextAttemptAt: null } });
   }
   const intents = await db.deliveryIntent.findMany({ where: transport?.kind === 'meta'
-    ? { accountId, ...due, source: 'automatic', effect: 'private_reply', event: { is: { externalId: `comment:${transport.commentId}` } } }
-    : { accountId, ...due }, orderBy: { createdAt: 'asc' }, take: 20, select: { id: true } });
+    ? { accountId, ...due, source: 'automatic', effect: 'private_reply', ...(selectedComment ? { event: { is: { externalId: selectedComment } } } : {}) }
+    : { accountId, ...due }, orderBy: { createdAt: 'asc' }, take: transport?.kind === 'meta' ? META_PILOT_SCAN_BATCH_SIZE : 20, select: { id: true } });
   for (const intent of intents) await executeIntent(db, vault, transport ?? await outcomeTransport(db, accountId, intent.id), { accountId, intentId: intent.id }, { now });
   await db.workerHeartbeat.upsert({ where: { accountId_kind: { accountId, kind: 'delivery' } },
     create: { accountId, kind: 'delivery', seenAt: new Date() }, update: { seenAt: new Date() } });
@@ -61,10 +62,11 @@ export async function startSyntheticDeliveryWorker(db: Database, boss: PgBoss, v
 
 /** Production worker is deliberately limited to the one configured account and private reply. */
 export async function startMetaPilotDeliveryWorker(db: Database, boss: PgBoss, vault: TokenVault, transport: MetaPilotTransport) {
-  if (process.env.PERSONAFLOW_MODE !== 'production' || process.env.PERSONAFLOW_SEND_MODE !== 'meta-private-reply')
+  const expectedMode = transport.scope === 'campaign' ? 'meta-campaign-private-reply' : 'meta-private-reply';
+  if (process.env.PERSONAFLOW_MODE !== 'production' || process.env.PERSONAFLOW_SEND_MODE !== expectedMode)
     throw new Error('Envio Meta não habilitado.');
   await boss.createQueue(META_PILOT_DELIVERY_QUEUE);
-  await boss.work(META_PILOT_DELIVERY_QUEUE, { pollingIntervalSeconds: 0.5 }, async (jobs) => {
+  await boss.work(META_PILOT_DELIVERY_QUEUE, { pollingIntervalSeconds: 0.5, teamSize: 1 }, async (jobs) => {
     for (const job of jobs) {
       const context = jobSchema.parse(job.data);
       if (context.accountId !== transport.accountId) throw new Error('Job fora da conta piloto.');

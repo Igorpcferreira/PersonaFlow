@@ -14,7 +14,58 @@ const configSchema = z.object({
   META_WEBHOOK_APP_ALIAS: z.string().regex(/^[a-z0-9-]{1,50}$/),
 });
 
+const futureReelConfigSchema = z.object({
+  PERSONAFLOW_MODE: z.literal('production'),
+  PERSONAFLOW_SEND_MODE: z.literal('meta-campaign-private-reply'),
+  META_INSTAGRAM_PILOT_ACCOUNT_ID: z.uuid(),
+  META_INSTAGRAM_PILOT_PROFESSIONAL_ID: z.string().regex(/^\d+$/),
+  META_INSTAGRAM_APPROVED_REEL_ID: z.string().regex(/^[1-9]\d*$/),
+  META_WEBHOOK_APP_ALIAS: z.string().regex(/^[a-z0-9-]{1,50}$/),
+});
+
 type PlannedIntent = Pick<IntentInput, 'source' | 'effect' | 'body'>;
+
+export type ApprovedFutureMetaPilot = Readonly<{
+  accountId: string;
+  professionalId: string;
+  reelId: string;
+  webhookAlias: string;
+  keyword: 'prévia';
+  approvedText: typeof META_PILOT_APPROVED_TEXT;
+}>;
+
+/**
+ * Reads the separately authorized campaign selection. This can never match
+ * the one-comment test Reel, so the campaign cannot widen that test by accident.
+ */
+export function readApprovedFutureMetaPilot(env: Record<string, string | undefined>): ApprovedFutureMetaPilot | null {
+  const parsed = futureReelConfigSchema.safeParse(env);
+  if (!parsed.success) return null;
+  const config = parsed.data;
+  if (config.META_INSTAGRAM_APPROVED_REEL_ID === env.META_INSTAGRAM_PILOT_REEL_ID) return null;
+  return {
+    accountId: config.META_INSTAGRAM_PILOT_ACCOUNT_ID,
+    professionalId: config.META_INSTAGRAM_PILOT_PROFESSIONAL_ID,
+    reelId: config.META_INSTAGRAM_APPROVED_REEL_ID,
+    webhookAlias: config.META_WEBHOOK_APP_ALIAS,
+    keyword: 'prévia',
+    approvedText: META_PILOT_APPROVED_TEXT,
+  };
+}
+
+export function isApprovedFutureMetaPilotRecipe(config: {
+  terms: string[];
+  introduction: string;
+  publicReplyEnabled: boolean;
+  buttonEnabled: boolean;
+  followRequired: boolean;
+  finalMessage: string;
+  link: string;
+}) {
+  return config.terms.length === 1 && config.terms[0] === 'prévia' &&
+    config.introduction === META_PILOT_APPROVED_TEXT && !config.publicReplyEnabled &&
+    !config.buttonEnabled && !config.followRequired && !config.finalMessage && !config.link;
+}
 
 /** Production may create an automation intent only for the one approved Kyber pilot. */
 export function isMetaPilotProduction(env: Record<string, string | undefined>) {
@@ -33,6 +84,18 @@ export function metaPilotTestCommentExternalId(env: Record<string, string | unde
 export function allowsMetaPilotDecision(env: Record<string, string | undefined>, context: NormalizedInbound,
   planned: readonly PlannedIntent[]) {
   if (!isMetaPilotProduction(env)) return true;
+  const campaign = readApprovedFutureMetaPilot(env);
+  if (campaign) {
+    if (planned.length !== 1 || context.account.id !== campaign.accountId ||
+        context.account.professionalId !== campaign.professionalId ||
+        context.account.webhookAppAlias !== campaign.webhookAlias) return false;
+    return validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
+      keyword: campaign.keyword, approvedText: campaign.approvedText }, {
+      account: { professionalId: context.account.professionalId },
+      event: { professionalId: context.account.professionalId, kind: context.event.kind as CanonicalEvent['kind'], mediaId: context.payload.mediaId,
+        text: context.payload.text, echo: context.payload.echo }, intent: planned[0],
+    }).allowed;
+  }
   const parsed = configSchema.safeParse(env);
   if (!parsed.success || planned.length !== 1) return false;
   const config = parsed.data;

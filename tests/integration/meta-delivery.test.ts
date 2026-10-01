@@ -35,7 +35,7 @@ async function fixture() {
     automationId: automation.id, source: 'automatic', effect: 'private_reply', body: { text: META_PILOT_APPROVED_TEXT } });
   const send = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ message_id: 'mid-1' }), { status: 200 }));
   const transport: MetaPilotTransport = { kind: 'meta', accountId: account.id, professionalId: currentProfessionalId,
-    reelId, commentId: String(commentNumber), webhookAlias, graphVersion: 'v24.0', options: { fetch: send } };
+    scope: 'test-comment', reelId, commentId: String(commentNumber), webhookAlias, graphVersion: 'v24.0', options: { fetch: send } };
   return { account, automation, event, intent, vault, transport, send };
 }
 
@@ -45,6 +45,7 @@ afterAll(async () => { await boss.stop(); await db.$disconnect(); });
 
 describe('envio Meta restrito ao piloto', () => {
   function enable(transport: MetaPilotTransport) {
+    if (transport.scope !== 'test-comment') throw new Error('Teste exige transporte de comentário controlado.');
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId);
     vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
@@ -97,6 +98,28 @@ describe('envio Meta restrito ao piloto', () => {
     expect(f.send).not.toHaveBeenCalled();
     expect((await executeIntent(db, f.vault, f.transport, { accountId: f.account.id, intentId: f.intent.id })).status).toBe('accepted');
     expect(f.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('campanha processa comentários distintos do Reel aprovado, mas bloqueia outro Reel antes do HTTP', async () => {
+    const f = await fixture();
+    const campaignReel = '17890000000000003';
+    await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: { mediaId: campaignReel } });
+    await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } }, data: {
+      payload: { actorId: `contact-${randomUUID()}`, text: 'Quero prévia', mediaId: campaignReel, echo: false, buttonPayload: null },
+    } });
+    const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', campaignReel);
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', transport.webhookAlias); vi.stubEnv('META_INSTAGRAM_GRAPH_VERSION', transport.graphVersion);
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: f.intent.id })).status).toBe('accepted');
+    expect(f.send).toHaveBeenCalledTimes(1);
+    const other = await fixture();
+    const otherTransport: MetaPilotTransport = { ...other.transport, scope: 'campaign', reelId: campaignReel };
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', otherTransport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', otherTransport.professionalId);
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', otherTransport.webhookAlias); vi.stubEnv('META_INSTAGRAM_GRAPH_VERSION', otherTransport.graphVersion);
+    expect((await executeIntent(db, other.vault, otherTransport, { accountId: other.account.id, intentId: other.intent.id })).status).toBe('blocked');
+    expect(other.send).not.toHaveBeenCalled();
   });
 
   it('intenção pendente antes de ativar envio não passa pelo gate do comentário de teste', async () => {

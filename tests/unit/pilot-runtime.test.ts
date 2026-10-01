@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowsMetaPilotDecision, isMetaPilotProduction, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isMetaPilotProduction, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
 import type { NormalizedInbound } from '../../src/modules/inbox/ingestion';
 
 const env = { PERSONAFLOW_MODE: 'production', META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
@@ -30,5 +30,34 @@ describe('runtime do piloto Meta', () => {
 
   it('aceita somente a intenção privada exata', () => {
     expect(allowsMetaPilotDecision(env, context, [intent])).toBe(true);
+  });
+
+  it('prepara somente um Reel futuro explícito e mantém o transporte desativado', () => {
+    const future = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' };
+    expect(readApprovedFutureMetaPilot(future)).toEqual({
+      accountId: env.META_INSTAGRAM_PILOT_ACCOUNT_ID,
+      professionalId: env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID,
+      reelId: '17890000000000003',
+      webhookAlias: env.META_WEBHOOK_APP_ALIAS,
+      keyword: 'prévia',
+      approvedText: META_PILOT_APPROVED_TEXT,
+    });
+  });
+
+  it.each([
+    ['sem Reel aprovado', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply' }],
+    ['modo de teste', { ...env, PERSONAFLOW_SEND_MODE: 'meta-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' }],
+    ['Reel do piloto atual', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: env.META_INSTAGRAM_PILOT_REEL_ID }],
+    ['ID inválido', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: 'reel-futuro' }],
+  ] as const)('fecha a preparação %s', (_name, candidate) => {
+    expect(readApprovedFutureMetaPilot(candidate)).toBeNull();
+  });
+
+  it('libera a campanha somente para comentários do Reel aprovado, sem ID de comentário', () => {
+    const campaign = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' };
+    const campaignContext = { ...context, event: { ...context.event, externalId: 'comment:17890000000000009' },
+      payload: { ...context.payload, mediaId: campaign.META_INSTAGRAM_APPROVED_REEL_ID } } as NormalizedInbound;
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent])).toBe(true);
+    expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [intent])).toBe(false);
   });
 });

@@ -13,7 +13,7 @@ const pilot = { professionalId: '17841422211864282', reelId: '17890000000000001'
 const process = (accountId: string, eventId: string) => processInboxEvent(db, { accountId, eventId }, (tx, context) => decideAutomation(tx, boss, context));
 const createdAccountIds = new Set<string>();
 
-async function fixture(patch: { mediaId?: string; text?: string; config?: object } = {}) {
+async function fixture(patch: { mediaId?: string; ruleMediaId?: string; text?: string; config?: object } = {}) {
   const accountId = randomUUID();
   const commentId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const config = patch.config ?? { ...emptyRecipe, terms: ['prévia'], introduction: META_PILOT_APPROVED_TEXT };
@@ -21,7 +21,7 @@ async function fixture(patch: { mediaId?: string; text?: string; config?: object
     connectionGeneration: 1, webhookAppAlias: pilot.alias } });
   const contact = await db.contact.create({ data: { accountId, igScopedUserId: `contact-${randomUUID()}` } });
   const conversation = await db.conversation.create({ data: { accountId, contactId: contact.id } });
-  await db.automation.create({ data: { accountId, name: 'Piloto Meta', status: 'active', mediaId: pilot.reelId, config } });
+  await db.automation.create({ data: { accountId, name: 'Piloto Meta', status: 'active', mediaId: patch.ruleMediaId ?? pilot.reelId, config } });
   const event = await db.inboundEvent.create({ data: { accountId, externalId: `comment:${commentId}`, kind: 'comment', generation: 1,
     payload: { actorId: contact.igScopedUserId, text: patch.text ?? 'Quero uma prévia', mediaId: patch.mediaId ?? pilot.reelId, echo: false, buttonPayload: null } } });
   createdAccountIds.add(account.id);
@@ -47,6 +47,28 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
     const intents = await db.deliveryIntent.findMany({ where: { accountId: f.accountId } });
     expect(intents).toHaveLength(1);
     expect(intents[0]).toMatchObject({ source: 'automatic', effect: 'private_reply', body: { text: META_PILOT_APPROVED_TEXT } });
+  });
+
+  it('modo de campanha aceita comentários diferentes somente no Reel aprovado e sem opcionais', async () => {
+    const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003' });
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', '17890000000000003');
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
+    await process(f.accountId, f.eventId);
+    expect(await db.deliveryIntent.findMany({ where: { accountId: f.accountId } })).toMatchObject([
+      { source: 'automatic', effect: 'private_reply', body: { text: META_PILOT_APPROVED_TEXT } },
+    ]);
+  });
+
+  it('modo de campanha recusa receita com termo ou sequência diferente', async () => {
+    const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003', config: { ...emptyRecipe, terms: ['prévia', 'site'], introduction: META_PILOT_APPROVED_TEXT } });
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', '17890000000000003');
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
+    await process(f.accountId, f.eventId);
+    expect(await db.deliveryIntent.count({ where: { accountId: f.accountId } })).toBe(0);
   });
 
   it.each([

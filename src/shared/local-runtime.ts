@@ -20,7 +20,7 @@ export function parseLocalSecrets(env: Record<string, string | undefined>) {
 }
 
 const metaConfigSchema = z.object({
-  PERSONAFLOW_SEND_MODE: z.enum(['disabled', 'meta-private-reply']),
+  PERSONAFLOW_SEND_MODE: z.enum(['disabled', 'meta-private-reply', 'meta-campaign-private-reply']),
   PERSONAFLOW_TOKEN_KEY: z.string().regex(/^[a-f0-9]{64}$/),
   META_INSTAGRAM_APP_ID: z.string().regex(/^\d+$/),
   META_INSTAGRAM_APP_SECRET: z.string().min(32),

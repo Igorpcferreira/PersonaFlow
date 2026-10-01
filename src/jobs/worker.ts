@@ -7,6 +7,7 @@ import { parseAuthConfig } from '../shared/auth-config';
 import { parseLocalSecrets, parseMetaWebhookRuntimeConfig } from '../shared/local-runtime';
 import { TokenVault } from '../modules/accounts/token-vault';
 import { z } from 'zod';
+import { readApprovedFutureMetaPilot } from '../integrations/meta/pilot-runtime';
 
 async function main() {
   const db = createPrisma();
@@ -28,7 +29,14 @@ async function main() {
         stopDelivery = await startMetaPilotDeliveryWorker(db, boss,
           new TokenVault(new Map([[1, Buffer.from(process.env.PERSONAFLOW_TOKEN_KEY!, 'hex')]]), 1),
           { kind: 'meta', accountId: settings.pilotAccountId, professionalId: settings.pilotProfessionalId,
-            reelId, commentId, webhookAlias: settings.webhookAlias, graphVersion: settings.graphVersion });
+            scope: 'test-comment', reelId, commentId, webhookAlias: settings.webhookAlias, graphVersion: settings.graphVersion });
+      } else if (process.env.PERSONAFLOW_SEND_MODE === 'meta-campaign-private-reply') {
+        const campaign = readApprovedFutureMetaPilot(process.env);
+        if (!campaign) throw new Error('Campanha Meta incompleta ou inconsistente.');
+        stopDelivery = await startMetaPilotDeliveryWorker(db, boss,
+          new TokenVault(new Map([[1, Buffer.from(process.env.PERSONAFLOW_TOKEN_KEY!, 'hex')]]), 1),
+          { kind: 'meta', scope: 'campaign', accountId: campaign.accountId, professionalId: campaign.professionalId,
+            reelId: campaign.reelId, webhookAlias: campaign.webhookAlias, graphVersion: settings.graphVersion });
       } else stopDelivery = startMetaPilotRecovery(db, settings.pilotAccountId);
     }
     await boss.work(INBOUND_QUEUE, { pollingIntervalSeconds: 0.5 }, async (jobs) => {
