@@ -14,10 +14,21 @@ async function outcomeTransport(db: Database, accountId: string, intentId: strin
 export async function sweepDeliveryAccount(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport | undefined, accountId: string, now?: Date) {
   if (!z.uuid().safeParse(accountId).success) throw new Error('Conta de manutenção inválida.');
   const scanAt = now ?? new Date();
-  const intents = await db.deliveryIntent.findMany({ where: { accountId, OR: [
+  const due = { OR: [
     { status: 'pending', OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: scanAt } }] },
     { status: 'sending', reservedUntil: { lte: scanAt } },
-  ] }, orderBy: { createdAt: 'asc' }, take: 20, select: { id: true } });
+  ] };
+  if (transport?.kind === 'meta') {
+    const selectedComment = `comment:${transport.commentId}`;
+    // A public-delivery mode must be implemented as its own worker and authorization contract.
+    // While this narrow private-reply pilot is active, accumulated non-selected private replies are terminally refused.
+    await db.deliveryIntent.updateMany({ where: { accountId, source: 'automatic', effect: 'private_reply', status: 'pending', OR: [
+      { event: { is: null } }, { event: { is: { externalId: { not: selectedComment } } } },
+    ] }, data: { status: 'blocked', reason: 'pilot_policy_denied', nextAttemptAt: null } });
+  }
+  const intents = await db.deliveryIntent.findMany({ where: transport?.kind === 'meta'
+    ? { accountId, ...due, source: 'automatic', effect: 'private_reply', event: { is: { externalId: `comment:${transport.commentId}` } } }
+    : { accountId, ...due }, orderBy: { createdAt: 'asc' }, take: 20, select: { id: true } });
   for (const intent of intents) await executeIntent(db, vault, transport ?? await outcomeTransport(db, accountId, intent.id), { accountId, intentId: intent.id }, { now });
   await db.workerHeartbeat.upsert({ where: { accountId_kind: { accountId, kind: 'delivery' } },
     create: { accountId, kind: 'delivery', seenAt: new Date() }, update: { seenAt: new Date() } });

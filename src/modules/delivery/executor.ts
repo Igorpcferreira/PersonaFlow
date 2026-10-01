@@ -8,7 +8,7 @@ import { lockConversation } from '../inbox/control';
 import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
-import { META_PILOT_APPROVED_TEXT } from '../../integrations/meta/pilot-runtime';
+import { META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
@@ -21,17 +21,19 @@ const metaTransportSchema = z.object({ kind: z.literal('meta'), graphVersion: z.
   accountId: z.uuid(), professionalId: z.string().regex(/^[1-9]\d*$/), reelId: z.string().regex(/^[1-9]\d*$/),
   commentId: z.string().regex(/^[1-9]\d*$/),
   webhookAlias: z.string().regex(/^[a-z0-9-]{1,50}$/) });
+
+function metaPilotTransportEnabled(transport: MetaPilotTransport, context: { accountId: string }) {
+  return process.env.PERSONAFLOW_MODE === 'production' && process.env.PERSONAFLOW_SEND_MODE === 'meta-private-reply' &&
+    context.accountId === transport.accountId && metaTransportSchema.safeParse(transport).success &&
+    process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID === transport.accountId &&
+    process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID === transport.professionalId &&
+    process.env.META_INSTAGRAM_PILOT_REEL_ID === transport.reelId &&
+    metaPilotTestCommentExternalId(process.env) === `comment:${transport.commentId}` &&
+    process.env.META_WEBHOOK_APP_ALIAS === transport.webhookAlias && process.env.META_INSTAGRAM_GRAPH_VERSION === transport.graphVersion;
+}
 export async function executeIntent(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport,
   context: { accountId: string; intentId: string }, options: ExecutionOptions = {}) {
-  if (!contextSchema.safeParse(context).success || (transport.kind === 'meta' &&
-      (process.env.PERSONAFLOW_MODE !== 'production' || process.env.PERSONAFLOW_SEND_MODE !== 'meta-private-reply' ||
-       context.accountId !== transport.accountId || !metaTransportSchema.safeParse(transport).success ||
-       process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID !== transport.accountId ||
-       process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID !== transport.professionalId ||
-       process.env.META_INSTAGRAM_PILOT_REEL_ID !== transport.reelId ||
-       process.env.META_INSTAGRAM_TEST_COMMENT_ID !== transport.commentId ||
-       process.env.META_WEBHOOK_APP_ALIAS !== transport.webhookAlias ||
-       process.env.META_INSTAGRAM_GRAPH_VERSION !== transport.graphVersion))) throw new Error('Executor recusado.');
+  if (!contextSchema.safeParse(context).success || (transport.kind === 'meta' && !metaPilotTransportEnabled(transport, context))) throw new Error('Executor recusado.');
   let now = options.now ?? new Date();
   const reserved = await db.$transaction(async (tx) => {
     await lockAccount(tx, context.accountId);
@@ -140,15 +142,20 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     let rateLimited = false;
     try {
       if (transport.kind === 'meta') {
-        const result = await sendMetaPrivateReply({ graphVersion: transport.graphVersion,
-          professionalId: transport.professionalId, accessToken: reserved.accessToken!,
-          approvedText: META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
-          commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
-        status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
-          result.kind === 'rejected' ? 'rejected' : 'blocked';
-        acceptedId = result.kind === 'accepted' ? result.messageId : null;
-        reason = result.kind === 'accepted' ? 'meta_api_accepted' : result.kind === 'rejected' ? 'meta_rejected' :
-          result.kind === 'confirmed_before_send' ? 'meta_preflight_failed' : 'meta_result_ambiguous';
+        // Recheck immediately before HTTP so a changed or removed gate cannot use an existing reservation.
+        if (!metaPilotTransportEnabled(transport, context) || reserved.commentExternalId !== transport.commentId) {
+          status = 'blocked'; reason = 'pilot_policy_denied';
+        } else {
+          const result = await sendMetaPrivateReply({ graphVersion: transport.graphVersion,
+            professionalId: transport.professionalId, accessToken: reserved.accessToken!,
+            approvedText: META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
+            commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
+          status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
+            result.kind === 'rejected' ? 'rejected' : 'blocked';
+          acceptedId = result.kind === 'accepted' ? result.messageId : null;
+          reason = result.kind === 'accepted' ? 'meta_api_accepted' : result.kind === 'rejected' ? 'meta_rejected' :
+            result.kind === 'confirmed_before_send' ? 'meta_preflight_failed' : 'meta_result_ambiguous';
+        }
       } else {
         const result = await Promise.race([
           transport.send({ ...context, attemptId: reserved.attempt.id, effect: reserved.intent.effect, body: reserved.body, signal: controller.signal }),

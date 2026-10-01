@@ -19,8 +19,10 @@ const mediaSchema = z.object({ data: z.array(z.object({
 
 let diagnosticStage = 'arguments';
 async function main() {
-  if (process.argv.length !== 3 || process.argv[2] !== '--list')
-    throw new Error('Uso: tsx src/jobs/pilot-media-list.ts --list');
+  const mode = process.argv[2];
+  if (!((mode === '--list' && process.argv.length === 3) ||
+        (mode === '--check-comments' && process.argv.length === 4 && /^[1-9]\d*$/.test(process.argv[3]))))
+    throw new Error('Uso: tsx src/jobs/pilot-media-list.ts --list|--check-comments MEDIA_ID');
   diagnosticStage = 'configuration';
   const config = settingsSchema.parse(process.env);
   diagnosticStage = 'database';
@@ -36,13 +38,21 @@ async function main() {
       throw new Error('Conexão da conta piloto indisponível.');
     const vault = new TokenVault(new Map([[1, Buffer.from(config.PERSONAFLOW_TOKEN_KEY, 'hex')]]), 1);
     const token = vault.decrypt(account.id, credential.generation, credential.keyVersion, credential.ciphertext);
-    const url = new URL(`https://graph.instagram.com/${config.META_INSTAGRAM_GRAPH_VERSION}/${account.professionalId}/media`);
-    url.searchParams.set('fields', 'id,media_type,media_product_type,permalink,timestamp');
-    url.searchParams.set('limit', '25');
+    const url = mode === '--list'
+      ? new URL(`https://graph.instagram.com/${config.META_INSTAGRAM_GRAPH_VERSION}/${account.professionalId}/media`)
+      : new URL(`https://graph.instagram.com/${config.META_INSTAGRAM_GRAPH_VERSION}/${process.argv[3]}/comments`);
+    url.searchParams.set('fields', mode === '--list' ? 'id,media_type,media_product_type,permalink,timestamp' : 'id');
+    url.searchParams.set('limit', mode === '--list' ? '25' : '1');
     diagnosticStage = 'api';
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(`Consulta de mídias recusada pela Meta (HTTP ${response.status}).`);
     diagnosticStage = 'response';
+    if (mode === '--check-comments') {
+      const parsed = z.object({ data: z.array(z.object({ id: z.string() })).max(1) }).safeParse(await response.json());
+      if (!parsed.success) throw new Error('Formato da resposta Meta inesperado (comments).');
+      console.log(JSON.stringify({ event: 'meta.pilot.comments_read', accessible: true, mediaId: process.argv[3] }));
+      return;
+    }
     const parsedResult = mediaSchema.safeParse(await response.json());
     if (!parsedResult.success) throw new Error(`Formato da resposta Meta inesperado (${parsedResult.error.issues.map((issue) => issue.path.join('.')).join(',').slice(0, 200)}).`);
     const parsed = parsedResult.data;

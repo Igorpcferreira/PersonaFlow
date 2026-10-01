@@ -4,7 +4,7 @@ import { createPrisma } from '../../src/shared/db';
 import { createBoss } from '../../src/jobs/queue';
 import { DELIVERY_QUEUE, META_PILOT_DELIVERY_QUEUE, createIntent } from '../../src/modules/delivery/ledger';
 import { executeIntent, type MetaPilotTransport } from '../../src/modules/delivery/executor';
-import { recoverExpiredMetaReservations } from '../../src/jobs/delivery';
+import { recoverExpiredMetaReservations, sweepDeliveryAccount } from '../../src/jobs/delivery';
 import { TokenVault } from '../../src/modules/accounts/token-vault';
 import { LOCAL_META_SCOPES } from '../../src/integrations/meta/oauth-contract';
 import { emptyRecipe } from '../../src/modules/automations/recipe';
@@ -96,6 +96,24 @@ describe('envio Meta restrito ao piloto', () => {
     expect((await executeIntent(db, f.vault, f.transport, { accountId: f.account.id, intentId: otherIntent.id })).status).toBe('blocked');
     expect(f.send).not.toHaveBeenCalled();
     expect((await executeIntent(db, f.vault, f.transport, { accountId: f.account.id, intentId: f.intent.id })).status).toBe('accepted');
+    expect(f.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('intenção pendente antes de ativar envio não passa pelo gate do comentário de teste', async () => {
+    const f = await fixture();
+    const original = await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } } });
+    commentNumber += 1n;
+    const older = await db.inboundEvent.create({ data: { accountId: f.account.id, externalId: `comment:${commentNumber}`,
+      kind: 'comment', generation: 1, payload: original.payload! } });
+    const olderIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
+      eventId: older.id, automationId: f.automation.id, source: 'automatic', effect: 'private_reply',
+      body: { text: META_PILOT_APPROVED_TEXT } });
+    enable(f.transport);
+    await sweepDeliveryAccount(db, f.vault, f.transport, f.account.id);
+    expect((await db.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: olderIntent.id } } }))
+      .status).toBe('blocked');
+    expect((await db.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } } }))
+      .status).toBe('accepted');
     expect(f.send).toHaveBeenCalledTimes(1);
   });
 

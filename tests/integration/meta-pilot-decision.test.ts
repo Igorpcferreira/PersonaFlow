@@ -15,16 +15,17 @@ const createdAccountIds = new Set<string>();
 
 async function fixture(patch: { mediaId?: string; text?: string; config?: object } = {}) {
   const accountId = randomUUID();
+  const commentId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const config = patch.config ?? { ...emptyRecipe, terms: ['prévia'], introduction: META_PILOT_APPROVED_TEXT };
   const account = await db.instagramAccount.create({ data: { id: accountId, label: 'Piloto Meta isolado', professionalId: pilot.professionalId,
     connectionGeneration: 1, webhookAppAlias: pilot.alias } });
   const contact = await db.contact.create({ data: { accountId, igScopedUserId: `contact-${randomUUID()}` } });
   const conversation = await db.conversation.create({ data: { accountId, contactId: contact.id } });
   await db.automation.create({ data: { accountId, name: 'Piloto Meta', status: 'active', mediaId: pilot.reelId, config } });
-  const event = await db.inboundEvent.create({ data: { accountId, externalId: `comment:${randomUUID()}`, kind: 'comment', generation: 1,
+  const event = await db.inboundEvent.create({ data: { accountId, externalId: `comment:${commentId}`, kind: 'comment', generation: 1,
     payload: { actorId: contact.igScopedUserId, text: patch.text ?? 'Quero uma prévia', mediaId: patch.mediaId ?? pilot.reelId, echo: false, buttonPayload: null } } });
   createdAccountIds.add(account.id);
-  return { accountId, conversationId: conversation.id, eventId: event.id };
+  return { accountId, conversationId: conversation.id, eventId: event.id, commentId };
 }
 
 beforeAll(async () => { await boss.start(); await boss.createQueue(DELIVERY_QUEUE); await boss.createQueue(META_PILOT_DELIVERY_QUEUE); });
@@ -40,6 +41,7 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
     const f = await fixture();
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId);
     vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId); vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId);
+    vi.stubEnv('META_INSTAGRAM_TEST_COMMENT_ID', f.commentId);
     vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
     await process(f.accountId, f.eventId);
     const intents = await db.deliveryIntent.findMany({ where: { accountId: f.accountId } });
@@ -56,6 +58,7 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
     const f = await fixture(fixturePatch);
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', 'accountId' in envPatch ? envPatch.accountId : f.accountId);
     vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId); vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId);
+    vi.stubEnv('META_INSTAGRAM_TEST_COMMENT_ID', f.commentId);
     vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
     await process(f.accountId, f.eventId);
     expect(await db.deliveryIntent.count({ where: { accountId: f.accountId } })).toBe(0);
