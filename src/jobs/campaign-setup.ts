@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { createPrisma } from '../shared/db';
 import { emptyRecipe } from '../modules/automations/recipe';
 import { LOCAL_META_SCOPES } from '../integrations/meta/oauth-contract';
-import { META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
 
 const settings = z.object({
   PERSONAFLOW_MODE: z.literal('production'),
@@ -16,11 +16,13 @@ const settings = z.object({
 });
 
 const recipe = { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT };
+const publicRecipe = { ...recipe, publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT };
 const ruleName = 'Kyber · prévia · campanha';
 
 async function main() {
   const mode = process.argv[2];
-  if (process.argv.length !== 3 || (mode !== '--check' && mode !== '--arm')) throw new Error('Uso: campaign-setup --check|--arm');
+  if (process.argv.length !== 3 || !['--check', '--arm', '--public-check', '--public-arm'].includes(mode))
+    throw new Error('Uso: campaign-setup --check|--arm|--public-check|--public-arm');
   const config = settings.parse(process.env);
   if (config.META_INSTAGRAM_APPROVED_REEL_ID === config.META_INSTAGRAM_PILOT_REEL_ID)
     throw new Error('O Reel da campanha deve ser diferente do piloto anterior.');
@@ -36,9 +38,17 @@ async function main() {
           LOCAL_META_SCOPES.some((scope) => !account.credential!.scopes.includes(scope)))
         throw new Error('Conta Meta ou assinatura de comentários indisponível.');
       const rules = await tx.automation.findMany({ where: { accountId: account.id, trigger: 'comment', mediaId: config.META_INSTAGRAM_APPROVED_REEL_ID } });
-      if (rules.length > 1 || (rules[0] && (rules[0].name !== ruleName || !isDeepStrictEqual(rules[0].config, recipe))))
+      const publicMode = mode === '--public-check' || mode === '--public-arm';
+      if (rules.length > 1 || (rules[0] && (rules[0].name !== ruleName ||
+          !(isDeepStrictEqual(rules[0].config, publicMode ? publicRecipe : recipe) ||
+            (publicMode && isDeepStrictEqual(rules[0].config, recipe))))))
         throw new Error('Outra regra ou configuração divergente atende este Reel.');
       let rule = rules[0];
+      if (publicMode && !rule) throw new Error('Regra da campanha ausente.');
+      if (mode === '--public-arm' && rule && isDeepStrictEqual(rule.config, recipe)) rule = await tx.automation.update({
+        where: { accountId_id: { accountId: account.id, id: rule.id } },
+        data: { config: publicRecipe, revision: { increment: 1 } },
+      });
       if (mode === '--arm' && !rule) rule = await tx.automation.create({ data: {
         accountId: account.id, name: ruleName, trigger: 'comment', mediaId: config.META_INSTAGRAM_APPROVED_REEL_ID,
         status: 'active', config: recipe,

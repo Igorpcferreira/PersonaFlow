@@ -8,7 +8,7 @@ import { recoverExpiredMetaReservations, sweepDeliveryAccount } from '../../src/
 import { TokenVault } from '../../src/modules/accounts/token-vault';
 import { LOCAL_META_SCOPES } from '../../src/integrations/meta/oauth-contract';
 import { emptyRecipe } from '../../src/modules/automations/recipe';
-import { META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
 
 const db = createPrisma(), boss = createBoss();
 const professionalId = '17841422211864282', reelId = '17890000000000001', webhookAlias = 'somoskyber-pilot';
@@ -44,6 +44,60 @@ afterEach(async () => { vi.unstubAllEnvs(); await db.instagramAccount.deleteMany
 afterAll(async () => { await boss.stop(); await db.$disconnect(); });
 
 describe('envio Meta restrito ao piloto', () => {
+  it('campanha só publica confirmação depois de DM aceita e não duplica no replay', async () => {
+    const f = await fixture();
+    const campaignReel = '17890000000000003';
+    await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT,
+        publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT },
+    } });
+    const original = await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } } });
+    await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } }, data: {
+      payload: { ...(original.payload as object), mediaId: campaignReel },
+    } });
+    const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
+      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+    const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', campaignReel);
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', transport.webhookAlias); vi.stubEnv('META_INSTAGRAM_GRAPH_VERSION', transport.graphVersion);
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: publicIntent.id })).status).toBe('pending');
+    expect(f.send).not.toHaveBeenCalled();
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: f.intent.id })).status).toBe('accepted');
+    f.send.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'public-1' }), { status: 200 }));
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: publicIntent.id }))).toMatchObject({ status: 'accepted', acceptedId: 'public-1' });
+    expect(f.send.mock.calls[1][0].toString()).toContain(`/replies`);
+    await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: publicIntent.id });
+    expect(f.send).toHaveBeenCalledTimes(2);
+  });
+
+  it('resposta pública não sai quando a DM fica incerta', async () => {
+    const f = await fixture();
+    const campaignReel = '17890000000000003';
+    await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT,
+        publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT },
+    } });
+    const original = await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } } });
+    await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } }, data: {
+      payload: { ...(original.payload as object), mediaId: campaignReel },
+    } });
+    const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
+      eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+    const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', campaignReel);
+    vi.stubEnv('META_WEBHOOK_APP_ALIAS', transport.webhookAlias); vi.stubEnv('META_INSTAGRAM_GRAPH_VERSION', transport.graphVersion);
+    f.send.mockRejectedValueOnce(new Error('Rede incerta'));
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: f.intent.id })).status).toBe('unknown');
+    expect((await executeIntent(db, f.vault, transport, { accountId: f.account.id, intentId: publicIntent.id }))).toMatchObject({
+      status: 'blocked', reason: 'private_reply_not_accepted',
+    });
+    expect(f.send).toHaveBeenCalledTimes(1);
+  });
+
   function enable(transport: MetaPilotTransport) {
     if (transport.scope !== 'test-comment') throw new Error('Teste exige transporte de comentário controlado.');
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-private-reply');

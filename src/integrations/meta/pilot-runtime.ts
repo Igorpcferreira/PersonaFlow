@@ -5,6 +5,7 @@ import type { CanonicalEvent } from './webhook';
 import { validateMetaPilot } from './pilot-policy';
 
 export const META_PILOT_APPROVED_TEXT = 'Oi! Vi seu pedido de prévia. Me manda o @ do seu negócio ou algumas fotos para eu entender o que você faz? Eu continuo por aqui depois.';
+export const META_CAMPAIGN_PUBLIC_REPLY_TEXT = 'Te mandei uma mensagem no direct para continuar seu pedido de prévia.';
 
 const configSchema = z.object({
   META_INSTAGRAM_PILOT_ACCOUNT_ID: z.uuid(),
@@ -57,13 +58,15 @@ export function isApprovedFutureMetaPilotRecipe(config: {
   terms: string[];
   introduction: string;
   publicReplyEnabled: boolean;
+  publicReply: string;
   buttonEnabled: boolean;
   followRequired: boolean;
   finalMessage: string;
   link: string;
 }) {
   return config.terms.length === 2 && config.terms.includes('prévia') && config.terms.includes('previa') &&
-    config.introduction === META_PILOT_APPROVED_TEXT && !config.publicReplyEnabled &&
+    config.introduction === META_PILOT_APPROVED_TEXT &&
+    (!config.publicReplyEnabled || config.publicReply === META_CAMPAIGN_PUBLIC_REPLY_TEXT) &&
     !config.buttonEnabled && !config.followRequired && !config.finalMessage && !config.link;
 }
 
@@ -74,7 +77,7 @@ export function isMetaPilotProduction(env: Record<string, string | undefined>) {
 
 /**
  * The private-reply pilot is authorized by one concrete comment, never by a Reel alone.
- * Public replies deliberately have no runtime authorization path while this pilot is active.
+ * The campaign may additionally acknowledge a DM publicly, after Meta accepts it.
  */
 export function metaPilotTestCommentExternalId(env: Record<string, string | undefined>) {
   const commentId = z.string().regex(/^[1-9]\d*$/).safeParse(env.META_INSTAGRAM_TEST_COMMENT_ID);
@@ -86,15 +89,18 @@ export function allowsMetaPilotDecision(env: Record<string, string | undefined>,
   if (!isMetaPilotProduction(env)) return true;
   const campaign = readApprovedFutureMetaPilot(env);
   if (campaign) {
-    if (planned.length !== 1 || context.account.id !== campaign.accountId ||
+    if ((planned.length !== 1 && planned.length !== 2) || context.account.id !== campaign.accountId ||
         context.account.professionalId !== campaign.professionalId ||
         context.account.webhookAppAlias !== campaign.webhookAlias) return false;
-    return validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
+    const privateAllowed = validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
       keyword: campaign.keyword, acceptUnaccented: true, approvedText: campaign.approvedText }, {
       account: { professionalId: context.account.professionalId },
       event: { professionalId: context.account.professionalId, kind: context.event.kind as CanonicalEvent['kind'], mediaId: context.payload.mediaId,
         text: context.payload.text, echo: context.payload.echo }, intent: planned[0],
     }).allowed;
+    return privateAllowed && (planned.length === 1 || (planned[1].source === 'automatic' &&
+      planned[1].effect === 'public_reply' && planned[1].body.text === META_CAMPAIGN_PUBLIC_REPLY_TEXT &&
+      planned[1].body.button === undefined && planned[1].body.link === undefined));
   }
   const parsed = configSchema.safeParse(env);
   if (!parsed.success || planned.length !== 1) return false;

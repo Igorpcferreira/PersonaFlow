@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowsMetaPilotDecision, isMetaPilotProduction, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
 import type { NormalizedInbound } from '../../src/modules/inbox/ingestion';
 
 const env = { PERSONAFLOW_MODE: 'production', META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
@@ -58,6 +58,10 @@ describe('runtime do piloto Meta', () => {
     const campaignContext = { ...context, event: { ...context.event, externalId: 'comment:17890000000000009' },
       payload: { ...context.payload, mediaId: campaign.META_INSTAGRAM_APPROVED_REEL_ID } } as NormalizedInbound;
     expect(allowsMetaPilotDecision(campaign, campaignContext, [intent])).toBe(true);
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent,
+      { source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } }])).toBe(true);
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent,
+      { source: 'automatic', effect: 'public_reply', body: { text: 'Outro texto' } }])).toBe(false);
     expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [intent])).toBe(false);
   });
 });

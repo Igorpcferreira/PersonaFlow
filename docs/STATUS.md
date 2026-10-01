@@ -1,5 +1,7 @@
 # Estado atual
 
+Em 01/10/2026, Pedro pediu resposta pública ao comentário elegível do Reel novo, informando que a DM foi enviada. O código preparado usa o texto fixo “Te mandei uma mensagem no direct para continuar seu pedido de prévia.” e exige aceite da DM pela Meta antes de reservar a resposta pública. A intenção usa chave por comentário e efeito; resultado incerto não é reenviado automaticamente. A resposta pública ainda não foi observada no Instagram nesta atualização.
+
 O bloco de 29/09 abaixo é o fechamento histórico do MVP fictício. O pedido de Pedro em 30/09 ampliou o escopo para um piloto real somente da @somoskyber. Não use a seção histórica de pendências como retrato vivo do app Meta.
 
 ## Piloto Kyber em 30/09/2026

@@ -8,7 +8,8 @@ import { lockConversation } from '../inbox/control';
 import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
-import { isApprovedFutureMetaPilotRecipe, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { sendMetaPublicReply } from '../../integrations/meta/public-reply';
+import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
@@ -49,6 +50,16 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
       return null;
     }
     if (intent.status !== 'pending' || (intent.nextAttemptAt && intent.nextAttemptAt > now)) return null;
+    if (transport.kind === 'meta' && intent.effect === 'public_reply') {
+      const privateIntent = await tx.deliveryIntent.findFirst({ where: { accountId: context.accountId,
+        eventId: intent.eventId, automationId: intent.automationId, effect: 'private_reply', source: 'automatic' } });
+      if (privateIntent?.status === 'pending' || privateIntent?.status === 'sending') return null;
+      if (privateIntent?.status !== 'accepted') {
+        await tx.deliveryIntent.update({ where: { accountId_id: { accountId: context.accountId, id: intent.id } },
+          data: { status: 'blocked', reason: 'private_reply_not_accepted', nextAttemptAt: null } });
+        return null;
+      }
+    }
     const account = await tx.instagramAccount.findUniqueOrThrow({ where: { id: context.accountId }, include: { credential: true } });
     const conversation = await tx.conversation.findUniqueOrThrow({ where: { accountId_id: { accountId: context.accountId, id: intent.conversationId } }, include: { contact: true } });
     const automation = intent.automationId ? await tx.automation.findUnique({ where: { accountId_id: { accountId: context.accountId, id: intent.automationId } } }) : null;
@@ -82,23 +93,26 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     if (!reason && !body.success) reason = 'payload_invalid';
     if (!reason && transport.kind === 'meta') {
       const payload = event?.payload as { text?: unknown; mediaId?: unknown; echo?: unknown } | null;
+      const isCampaignPublic = transport.scope === 'campaign' && intent.effect === 'public_reply';
       const approved = event && payload && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
         mediaId: transport.reelId, keyword: 'prévia', acceptUnaccented: transport.scope === 'campaign', approvedText: META_PILOT_APPROVED_TEXT }, {
         account: { professionalId: account.professionalId },
         event: { professionalId: account.professionalId, kind: event.kind as 'comment',
           mediaId: typeof payload.mediaId === 'string' ? payload.mediaId : null,
           text: typeof payload.text === 'string' ? payload.text : null, echo: payload.echo === true },
-        intent: { source: intent.source as 'automatic', effect: intent.effect as 'private_reply', body: body.data! },
+        intent: { source: intent.source as 'automatic', effect: 'private_reply', body: isCampaignPublic ? { text: META_PILOT_APPROVED_TEXT } : body.data! },
       }).allowed;
       const recipe = automation ? recipeConfig.safeParse(automation.config) : null;
       const selectedComment = transport.scope === 'test-comment' && event?.externalId === `comment:${transport.commentId}`;
       if (account.id !== transport.accountId || account.professionalId !== transport.professionalId ||
           account.webhookAppAlias !== transport.webhookAlias || intent.source !== 'automatic' ||
-          intent.effect !== 'private_reply' || !event?.externalId.match(/^comment:[1-9]\d*$/) ||
+          (intent.effect !== 'private_reply' && !isCampaignPublic) || !event?.externalId.match(/^comment:[1-9]\d*$/) ||
           (transport.scope === 'test-comment' && !selectedComment) ||
           automation?.mediaId !== transport.reelId || !approved || !recipe?.success ||
-          !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled || recipe.data.publicReplyEnabled ||
+          !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled ||
           recipe.data.followRequired || recipe.data.link ||
+          (transport.scope === 'test-comment' && recipe.data.publicReplyEnabled) ||
+          (isCampaignPublic && (!recipe.data.publicReplyEnabled || body.data?.text !== META_CAMPAIGN_PUBLIC_REPLY_TEXT)) ||
           (transport.scope === 'test-comment' && (recipe.data.terms.length !== 1 || recipe.data.terms[0] !== 'prévia')) ||
           recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
           recipe.data.finalMessage || (transport.scope === 'campaign' && !isApprovedFutureMetaPilotRecipe(recipe.data))) reason = 'pilot_policy_denied';
@@ -152,9 +166,9 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
             (transport.scope === 'test-comment' && reserved.commentExternalId !== transport.commentId)) {
           status = 'blocked'; reason = 'pilot_policy_denied';
         } else {
-          const result = await sendMetaPrivateReply({ graphVersion: transport.graphVersion,
+          const result = await (reserved.intent.effect === 'public_reply' ? sendMetaPublicReply : sendMetaPrivateReply)({ graphVersion: transport.graphVersion,
             professionalId: transport.professionalId, accessToken: reserved.accessToken!,
-            approvedText: META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
+            approvedText: reserved.intent.effect === 'public_reply' ? META_CAMPAIGN_PUBLIC_REPLY_TEXT : META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
             commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
           status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
             result.kind === 'rejected' ? 'rejected' : 'blocked';

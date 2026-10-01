@@ -21,14 +21,14 @@ export async function sweepDeliveryAccount(db: Database, vault: TokenVault, tran
   ] };
   const selectedComment = transport?.kind === 'meta' && transport.scope === 'test-comment' ? `comment:${transport.commentId}` : null;
   if (transport?.kind === 'meta') {
-    // A public-delivery mode must be implemented as its own worker and authorization contract.
-    // While this narrow private-reply pilot is active, accumulated non-selected private replies are terminally refused.
+    // The campaign public reply is separately checked against an accepted private reply in the executor.
     await db.deliveryIntent.updateMany({ where: { accountId, source: 'automatic', effect: 'private_reply', status: 'pending', OR: [
       { event: { is: null } }, ...(selectedComment ? [{ event: { is: { externalId: { not: selectedComment } } } }] : []),
     ] }, data: { status: 'blocked', reason: 'pilot_policy_denied', nextAttemptAt: null } });
   }
   const intents = await db.deliveryIntent.findMany({ where: transport?.kind === 'meta'
-    ? { accountId, ...due, source: 'automatic', effect: 'private_reply', ...(selectedComment ? { event: { is: { externalId: selectedComment } } } : {}) }
+    ? { accountId, ...due, source: 'automatic', effect: transport.scope === 'campaign' ? { in: ['private_reply', 'public_reply'] } : 'private_reply',
+        ...(selectedComment ? { event: { is: { externalId: selectedComment } } } : {}) }
     : { accountId, ...due }, orderBy: { createdAt: 'asc' }, take: transport?.kind === 'meta' ? META_PILOT_SCAN_BATCH_SIZE : 20, select: { id: true } });
   for (const intent of intents) await executeIntent(db, vault, transport ?? await outcomeTransport(db, accountId, intent.id), { accountId, intentId: intent.id }, { now });
   await db.workerHeartbeat.upsert({ where: { accountId_kind: { accountId, kind: 'delivery' } },
