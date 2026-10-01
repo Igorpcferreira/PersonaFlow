@@ -34,15 +34,15 @@ O job rejeita qualquer UUID diferente de `META_INSTAGRAM_PILOT_ACCOUNT_ID`. A sa
 
 ## Agendamento e gate manual
 
-Os templates em `deploy/` não foram instalados nem ativados:
+Conferido na VPS em 01/10/2026: a simulação e seu timer foram instalados e ativados. Os templates em `deploy/` têm estas funções:
 
 - `personaflow-retention.service.template` executa a simulação e grava somente a saída sanitizada em `~/.local/state/personaflow/logs/retention.log`;
 - `personaflow-retention.timer.template` dispara essa simulação diariamente às 03:17, recuperando uma execução perdida depois de reinício;
 - `personaflow-retention-execute.service.template` não tem timer e contém a confirmação de ambiente mais `--execute`. Depois de conferir a última simulação, a única forma prevista de iniciar a redação é `systemctl --user start personaflow-retention-execute.service`;
 - `personaflow-retention.logrotate.conf.template` mantém o arquivo sanitizado por no máximo 30 dias, com compressão dos arquivos antigos.
 
-Para instalar posteriormente, substituir os placeholders de diretório e usuário, copiar as units para `~/.config/systemd/user/`, rodar `systemctl --user daemon-reload` e habilitar somente `personaflow-retention.timer`. Nunca habilitar a unit `personaflow-retention-execute.service`, pois ela é o gate manual. Validar a configuração de rotação com `logrotate -d <arquivo-configurado>` antes da primeira execução, depois de confirmar que o serviço usa o mesmo diretório de logs.
+Na VPS, a simulação executada em 01/10 registrou zero campos elegíveis e não apagou nada. A unit de redação efetiva não foi habilitada. `personaflow-retention.timer` está ativo às 03h17 UTC; `personaflow-logs.timer` roda às 03h23 UTC e usa um estado próprio para girar somente `retention.log`. A configuração passou em `logrotate -d` e na execução real, com arquivos `0600`. A rotação preexistente de web e worker permanece separada em `/etc/logrotate.d/personaflow-app`. Antes de afirmar que a política de 90 dias está cumprida, ainda é preciso decidir e validar a execução efetiva de redação de dados vencidos.
 
 ## Logs sanitizados
 
-Não existe tabela persistente de logs no schema atual. Os templates agora direcionam as saídas de web e worker para arquivos próprios e incluem `personaflow-app.logrotate.conf.template` com 30 dias; a rotação do job de retenção continua separada. Nada foi instalado na VPS. Antes de declarar a política de logs cumprida, é preciso validar a configuração real do `systemd`/`logrotate` e inspecionar uma execução real para confirmar que nenhum framework ou erro inesperado escreveu corpo de mensagem, payload, token, cookie ou URL com código OAuth. Até essa conferência, a retenção operacional de logs permanece pendente.
+Não existe tabela persistente de logs no schema atual. Web, worker e retenção escrevem em arquivos privados `0600` na VPS. As regras de trinta dias estão instaladas, mas ainda falta observar uma rotação natural e auditar regularmente a sanitização de erros inesperados antes de declarar toda a retenção operacional comprovada.

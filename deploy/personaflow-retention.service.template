@@ -5,6 +5,7 @@ After=personaflow-postgres.service
 
 [Service]
 Type=oneshot
+UMask=0077
 WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
 Environment=NODE_ENV=production
 EnvironmentFile=%h/.config/personaflow/personaflow.env

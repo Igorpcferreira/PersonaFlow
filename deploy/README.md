@@ -7,7 +7,7 @@ Internet -> Nginx root-owned :443 -> Next systemd --user :3210 (127.0.0.1)
                                       -> PostgreSQL Docker :5432 (127.0.0.1)
 ```
 
-Os templates não iniciam `npm run demo` nem `npm run demo:seed`. `PERSONAFLOW_MODE=production` e `PERSONAFLOW_SEND_MODE=disabled` são os valores iniciais obrigatórios. A unit do worker pode consumir eventos e manter o ledger mesmo com envio desabilitado; a troca para `meta-private-reply` exige todos os IDs exatos, inclusive o ID do único comentário de teste. A unit do worker continua desativada enquanto a Meta não estiver validada.
+Os templates não iniciam `npm run demo` nem `npm run demo:seed`. `PERSONAFLOW_MODE=production` e `PERSONAFLOW_SEND_MODE=disabled` são os valores iniciais obrigatórios. A unit do worker pode consumir eventos e manter o ledger mesmo com envio desabilitado; a troca para `meta-private-reply` exige todos os IDs exatos, inclusive o ID do único comentário de teste. O worker foi ativado somente após o teste controlado de 01/10, e o envio voltou a `disabled`. Confira o estado vivo em `docs/STATUS.md` antes de operar.
 
 ## Arquivos privados necessários na VPS
 
