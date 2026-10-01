@@ -8,7 +8,7 @@ import { recoverExpiredMetaReservations, sweepDeliveryAccount } from '../../src/
 import { TokenVault } from '../../src/modules/accounts/token-vault';
 import { LOCAL_META_SCOPES } from '../../src/integrations/meta/oauth-contract';
 import { emptyRecipe } from '../../src/modules/automations/recipe';
-import { META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
 
 const db = createPrisma(), boss = createBoss();
 const professionalId = '17841422211864282', reelId = '17890000000000001', webhookAlias = 'somoskyber-pilot';
@@ -48,7 +48,7 @@ describe('envio Meta restrito ao piloto', () => {
     const f = await fixture();
     const campaignReel = '17890000000000003';
     await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
-      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT,
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_CAMPAIGN_APPROVED_TEXT,
         publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT },
     } });
     const original = await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } } });
@@ -57,6 +57,7 @@ describe('envio Meta restrito ao piloto', () => {
     } });
     const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
       eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+    await db.deliveryIntent.update({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } }, data: { body: { text: META_CAMPAIGN_APPROVED_TEXT } } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
@@ -76,7 +77,7 @@ describe('envio Meta restrito ao piloto', () => {
     const f = await fixture();
     const campaignReel = '17890000000000003';
     await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
-      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT,
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_CAMPAIGN_APPROVED_TEXT,
         publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT },
     } });
     const original = await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } } });
@@ -85,6 +86,7 @@ describe('envio Meta restrito ao piloto', () => {
     } });
     const publicIntent = await createIntent(db, boss, { accountId: f.account.id, conversationId: f.intent.conversationId,
       eventId: f.event.id, automationId: f.automation.id, source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } });
+    await db.deliveryIntent.update({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } }, data: { body: { text: META_CAMPAIGN_APPROVED_TEXT } } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
@@ -158,12 +160,13 @@ describe('envio Meta restrito ao piloto', () => {
     const f = await fixture();
     const campaignReel = '17890000000000003';
     await db.automation.update({ where: { accountId_id: { accountId: f.account.id, id: f.automation.id } }, data: {
-      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT },
+      mediaId: campaignReel, config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_CAMPAIGN_APPROVED_TEXT },
     } });
     await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } }, data: {
       payload: { actorId: `contact-${randomUUID()}`, text: 'Quero PREVIA', mediaId: campaignReel, echo: false, buttonPayload: null },
     } });
     const transport: MetaPilotTransport = { ...f.transport, scope: 'campaign', reelId: campaignReel };
+    await db.deliveryIntent.update({ where: { accountId_id: { accountId: f.account.id, id: f.intent.id } }, data: { body: { text: META_CAMPAIGN_APPROVED_TEXT } } });
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', transport.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', transport.professionalId);
     vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', campaignReel);

@@ -9,7 +9,7 @@ import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
 import { sendMetaPublicReply } from '../../integrations/meta/public-reply';
-import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
@@ -92,15 +92,16 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     const body = deliveryBody.safeParse(intent.body);
     if (!reason && !body.success) reason = 'payload_invalid';
     if (!reason && transport.kind === 'meta') {
+      const approvedPrivateText = transport.scope === 'campaign' ? META_CAMPAIGN_APPROVED_TEXT : META_PILOT_APPROVED_TEXT;
       const payload = event?.payload as { text?: unknown; mediaId?: unknown; echo?: unknown } | null;
       const isCampaignPublic = transport.scope === 'campaign' && intent.effect === 'public_reply';
       const approved = event && payload && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
-        mediaId: transport.reelId, keyword: 'prévia', acceptUnaccented: transport.scope === 'campaign', approvedText: META_PILOT_APPROVED_TEXT }, {
+        mediaId: transport.reelId, keyword: 'prévia', acceptUnaccented: transport.scope === 'campaign', approvedText: approvedPrivateText }, {
         account: { professionalId: account.professionalId },
         event: { professionalId: account.professionalId, kind: event.kind as 'comment',
           mediaId: typeof payload.mediaId === 'string' ? payload.mediaId : null,
           text: typeof payload.text === 'string' ? payload.text : null, echo: payload.echo === true },
-        intent: { source: intent.source as 'automatic', effect: 'private_reply', body: isCampaignPublic ? { text: META_PILOT_APPROVED_TEXT } : body.data! },
+        intent: { source: intent.source as 'automatic', effect: 'private_reply', body: isCampaignPublic ? { text: approvedPrivateText } : body.data! },
       }).allowed;
       const recipe = automation ? recipeConfig.safeParse(automation.config) : null;
       const selectedComment = transport.scope === 'test-comment' && event?.externalId === `comment:${transport.commentId}`;
@@ -114,7 +115,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
           (transport.scope === 'test-comment' && recipe.data.publicReplyEnabled) ||
           (isCampaignPublic && (!recipe.data.publicReplyEnabled || body.data?.text !== META_CAMPAIGN_PUBLIC_REPLY_TEXT)) ||
           (transport.scope === 'test-comment' && (recipe.data.terms.length !== 1 || recipe.data.terms[0] !== 'prévia')) ||
-          recipe.data.introduction !== META_PILOT_APPROVED_TEXT ||
+          recipe.data.introduction !== approvedPrivateText ||
           recipe.data.finalMessage || (transport.scope === 'campaign' && !isApprovedFutureMetaPilotRecipe(recipe.data))) reason = 'pilot_policy_denied';
     }
     let accessToken: string | null = null;
@@ -168,7 +169,8 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
         } else {
           const result = await (reserved.intent.effect === 'public_reply' ? sendMetaPublicReply : sendMetaPrivateReply)({ graphVersion: transport.graphVersion,
             professionalId: transport.professionalId, accessToken: reserved.accessToken!,
-            approvedText: reserved.intent.effect === 'public_reply' ? META_CAMPAIGN_PUBLIC_REPLY_TEXT : META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
+            approvedText: reserved.intent.effect === 'public_reply' ? META_CAMPAIGN_PUBLIC_REPLY_TEXT :
+              transport.scope === 'campaign' ? META_CAMPAIGN_APPROVED_TEXT : META_PILOT_APPROVED_TEXT }, { professionalId: transport.professionalId,
             commentExternalId: reserved.commentExternalId, text: reserved.body.text }, transport.options);
           status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
             result.kind === 'rejected' ? 'rejected' : 'blocked';

@@ -6,7 +6,7 @@ import { DELIVERY_QUEUE, META_PILOT_DELIVERY_QUEUE } from '../../src/modules/del
 import { emptyRecipe } from '../../src/modules/automations/recipe';
 import { decideAutomation } from '../../src/modules/automations/decision';
 import { processInboxEvent } from '../../src/modules/inbox/ingestion';
-import { META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_APPROVED_TEXT, META_PILOT_APPROVED_TEXT } from '../../src/integrations/meta/pilot-runtime';
 
 const db = createPrisma(), boss = createBoss();
 const pilot = { professionalId: '17841422211864282', reelId: '17890000000000001', alias: 'somoskyber-pilot' };
@@ -51,14 +51,14 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
 
   it('modo de campanha aceita comentários diferentes somente no Reel aprovado e sem opcionais', async () => {
     const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003', text: 'PREVIA',
-      config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT } });
+      config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_CAMPAIGN_APPROVED_TEXT } });
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
     vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId);
     vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', '17890000000000003');
     vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
     await process(f.accountId, f.eventId);
     expect(await db.deliveryIntent.findMany({ where: { accountId: f.accountId } })).toMatchObject([
-      { source: 'automatic', effect: 'private_reply', body: { text: META_PILOT_APPROVED_TEXT } },
+      { source: 'automatic', effect: 'private_reply', body: { text: META_CAMPAIGN_APPROVED_TEXT } },
     ]);
   });
 

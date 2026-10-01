@@ -5,6 +5,13 @@ import type { CanonicalEvent } from './webhook';
 import { validateMetaPilot } from './pilot-policy';
 
 export const META_PILOT_APPROVED_TEXT = 'Oi! Vi seu pedido de prévia. Me manda o @ do seu negócio ou algumas fotos para eu entender o que você faz? Eu continuo por aqui depois.';
+export const META_CAMPAIGN_WHATSAPP_URL = (() => {
+  const url = new URL('https://somoskyber.com.br/fale');
+  url.searchParams.set('origem', 'instagram-reels-previa');
+  url.searchParams.set('text', 'Olá! Vim pelo Reels da Kyber e quero uma prévia grátis do meu site. Vou enviar as informações e os materiais do meu negócio.');
+  return url.toString();
+})();
+export const META_CAMPAIGN_APPROVED_TEXT = `Oi! Vi seu pedido de prévia. Para começar, toque no link e envie o @ do seu negócio ou algumas fotos pelo WhatsApp. Você falará diretamente com a Kyber:\n${META_CAMPAIGN_WHATSAPP_URL}`;
 export const META_CAMPAIGN_PUBLIC_REPLY_TEXT = 'Te mandei uma mensagem no direct para continuar seu pedido de prévia.';
 
 const configSchema = z.object({
@@ -32,7 +39,7 @@ export type ApprovedFutureMetaPilot = Readonly<{
   reelId: string;
   webhookAlias: string;
   keyword: 'prévia';
-  approvedText: typeof META_PILOT_APPROVED_TEXT;
+  approvedText: typeof META_CAMPAIGN_APPROVED_TEXT;
 }>;
 
 /**
@@ -50,7 +57,7 @@ export function readApprovedFutureMetaPilot(env: Record<string, string | undefin
     reelId: config.META_INSTAGRAM_APPROVED_REEL_ID,
     webhookAlias: config.META_WEBHOOK_APP_ALIAS,
     keyword: 'prévia',
-    approvedText: META_PILOT_APPROVED_TEXT,
+    approvedText: META_CAMPAIGN_APPROVED_TEXT,
   };
 }
 
@@ -65,7 +72,7 @@ export function isApprovedFutureMetaPilotRecipe(config: {
   link: string;
 }) {
   return config.terms.length === 2 && config.terms.includes('prévia') && config.terms.includes('previa') &&
-    config.introduction === META_PILOT_APPROVED_TEXT &&
+    (config.introduction === META_PILOT_APPROVED_TEXT || config.introduction === META_CAMPAIGN_APPROVED_TEXT) &&
     (!config.publicReplyEnabled || config.publicReply === META_CAMPAIGN_PUBLIC_REPLY_TEXT) &&
     !config.buttonEnabled && !config.followRequired && !config.finalMessage && !config.link;
 }

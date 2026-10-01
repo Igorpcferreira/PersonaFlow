@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_CAMPAIGN_WHATSAPP_URL, META_PILOT_APPROVED_TEXT, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
 import type { NormalizedInbound } from '../../src/modules/inbox/ingestion';
 
 const env = { PERSONAFLOW_MODE: 'production', META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
@@ -40,7 +40,7 @@ describe('runtime do piloto Meta', () => {
       reelId: '17890000000000003',
       webhookAlias: env.META_WEBHOOK_APP_ALIAS,
       keyword: 'prévia',
-      approvedText: META_PILOT_APPROVED_TEXT,
+      approvedText: META_CAMPAIGN_APPROVED_TEXT,
     });
   });
 
@@ -57,11 +57,21 @@ describe('runtime do piloto Meta', () => {
     const campaign = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' };
     const campaignContext = { ...context, event: { ...context.event, externalId: 'comment:17890000000000009' },
       payload: { ...context.payload, mediaId: campaign.META_INSTAGRAM_APPROVED_REEL_ID } } as NormalizedInbound;
-    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent])).toBe(true);
-    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent,
+    const campaignIntent = { ...intent, body: { text: META_CAMPAIGN_APPROVED_TEXT } };
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent])).toBe(true);
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent])).toBe(false);
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent,
       { source: 'automatic', effect: 'public_reply', body: { text: META_CAMPAIGN_PUBLIC_REPLY_TEXT } }])).toBe(true);
-    expect(allowsMetaPilotDecision(campaign, campaignContext, [intent,
+    expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent,
       { source: 'automatic', effect: 'public_reply', body: { text: 'Outro texto' } }])).toBe(false);
-    expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [intent])).toBe(false);
+    expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [campaignIntent])).toBe(false);
+  });
+
+  it('mantém a rota de WhatsApp e identifica a campanha Kyber', () => {
+    const url = new URL(META_CAMPAIGN_WHATSAPP_URL);
+    expect(`${url.origin}${url.pathname}`).toBe('https://somoskyber.com.br/fale');
+    expect(url.searchParams.get('origem')).toBe('instagram-reels-previa');
+    expect(url.searchParams.get('text')).toContain('Reels da Kyber');
+    expect(META_CAMPAIGN_APPROVED_TEXT).toContain(META_CAMPAIGN_WHATSAPP_URL);
   });
 });

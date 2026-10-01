@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { createPrisma } from '../shared/db';
 import { emptyRecipe } from '../modules/automations/recipe';
 import { LOCAL_META_SCOPES } from '../integrations/meta/oauth-contract';
-import { META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
+import { META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXT, META_PILOT_APPROVED_TEXT } from '../integrations/meta/pilot-runtime';
 
 const settings = z.object({
   PERSONAFLOW_MODE: z.literal('production'),
@@ -17,12 +17,13 @@ const settings = z.object({
 
 const recipe = { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_PILOT_APPROVED_TEXT };
 const publicRecipe = { ...recipe, publicReplyEnabled: true, publicReply: META_CAMPAIGN_PUBLIC_REPLY_TEXT };
+const linkRecipe = { ...publicRecipe, introduction: META_CAMPAIGN_APPROVED_TEXT };
 const ruleName = 'Kyber · prévia · campanha';
 
 async function main() {
   const mode = process.argv[2];
-  if (process.argv.length !== 3 || !['--check', '--arm', '--public-check', '--public-arm'].includes(mode))
-    throw new Error('Uso: campaign-setup --check|--arm|--public-check|--public-arm');
+  if (process.argv.length !== 3 || !['--check', '--arm', '--public-check', '--public-arm', '--link-check', '--link-arm'].includes(mode))
+    throw new Error('Uso: campaign-setup --check|--arm|--public-check|--public-arm|--link-check|--link-arm');
   const config = settings.parse(process.env);
   if (config.META_INSTAGRAM_APPROVED_REEL_ID === config.META_INSTAGRAM_PILOT_REEL_ID)
     throw new Error('O Reel da campanha deve ser diferente do piloto anterior.');
@@ -39,12 +40,23 @@ async function main() {
         throw new Error('Conta Meta ou assinatura de comentários indisponível.');
       const rules = await tx.automation.findMany({ where: { accountId: account.id, trigger: 'comment', mediaId: config.META_INSTAGRAM_APPROVED_REEL_ID } });
       const publicMode = mode === '--public-check' || mode === '--public-arm';
+      const linkMode = mode === '--link-check' || mode === '--link-arm';
       if (rules.length > 1 || (rules[0] && (rules[0].name !== ruleName ||
-          !(isDeepStrictEqual(rules[0].config, publicMode ? publicRecipe : recipe) ||
+          !(isDeepStrictEqual(rules[0].config, linkMode ? linkRecipe : publicMode ? publicRecipe : recipe) ||
+            (linkMode && isDeepStrictEqual(rules[0].config, publicRecipe)) ||
             (publicMode && isDeepStrictEqual(rules[0].config, recipe))))))
         throw new Error('Outra regra ou configuração divergente atende este Reel.');
       let rule = rules[0];
-      if (publicMode && !rule) throw new Error('Regra da campanha ausente.');
+      if ((publicMode || linkMode) && !rule) throw new Error('Regra da campanha ausente.');
+      if (linkMode && rule) {
+        const unfinished = await tx.deliveryIntent.count({ where: { accountId: account.id, automationId: rule.id,
+          status: { in: ['pending', 'sending'] } } });
+        if (unfinished) throw new Error('Há envios anteriores pendentes; aguarde antes de trocar o texto.');
+      }
+      if (mode === '--link-arm' && rule && isDeepStrictEqual(rule.config, publicRecipe)) rule = await tx.automation.update({
+        where: { accountId_id: { accountId: account.id, id: rule.id } },
+        data: { config: linkRecipe, revision: { increment: 1 } },
+      });
       if (mode === '--public-arm' && rule && isDeepStrictEqual(rule.config, recipe)) rule = await tx.automation.update({
         where: { accountId_id: { accountId: account.id, id: rule.id } },
         data: { config: publicRecipe, revision: { increment: 1 } },
