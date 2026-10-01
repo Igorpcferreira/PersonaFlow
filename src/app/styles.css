@@ -20,6 +20,26 @@ p { line-height: 1.65; }
 .pilot-status h2 { margin: 0 0 12px; font-size: 1.15rem; }
 .pilot-status p { margin: 8px 0; }
 .pilot-status a { display: inline-block; margin-top: 12px; font-weight: 650; }
+.production-card { width: min(100%, 1000px); }
+.production-inbox { margin: 28px 0; border-top: 1px solid #dbe3df; padding-top: 24px; }
+.production-inbox-header { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.production-inbox-header h2 { margin: 0; font-size: 1.4rem; }
+.production-inbox-header p { margin: 7px 0 18px; color: #526668; }
+.production-inbox-grid { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 18px; }
+.production-inbox-list { display: grid; align-content: start; gap: 8px; max-height: 620px; overflow-y: auto; }
+.production-inbox-item { display: grid; gap: 5px; padding: 14px; background: #f4f7f5; color: #172b32; border: 1px solid #dbe3df; text-align: left; font-weight: 400; }
+.production-inbox-item:hover, .production-inbox-item.selected { background: #e7f1ea; border-color: #97b9a8; }
+.production-inbox-item strong { font-size: .86rem; }
+.production-inbox-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.production-inbox-item small { color: #526668; }
+.production-inbox-thread { min-height: 180px; padding: 4px 0; }
+.production-inbox-thread h3 { margin-top: 0; }
+.production-inbox-message { padding: 12px 15px; margin: 10px 0; border-radius: 12px; background: #f2f5f3; overflow-wrap: anywhere; }
+.production-inbox-message.outbound { background: #e7f2ea; margin-left: 8%; }
+.production-inbox-message p { margin: 5px 0 0; white-space: pre-wrap; }
+.production-inbox-message small { color: #526668; }
+.production-inbox-note { border-left: 3px solid #97b9a8; padding-left: 12px; white-space: pre-wrap; }
+@media (max-width: 700px) { .production-inbox-header { display: block; } .production-inbox-header button { margin-bottom: 16px; } .production-inbox-grid { grid-template-columns: 1fr; } .production-inbox-list { max-height: 260px; } }
 .account-cards { display: grid; gap: 12px; }
 .account-card { color: #174e46; text-decoration: none; border: 1px solid #dbe3df; border-radius: 12px; padding: 18px; display: grid; gap: 8px; }
 .account-card:hover { background: #eef5ef; }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AccountChooser } from './account-shell';
+import ProductionInbox from './production-inbox';
 
 type PilotStatus = { prepared: boolean; connected: boolean; subscribed: boolean; sendingEnabled: boolean };
 
@@ -78,13 +79,13 @@ export default function LoginPanel() {
     } finally { setBusy(false); }
   }
 
-  return <section className="login-card" aria-busy={loading || busy}>
+  return <section className={`login-card${mode === 'production' && operator ? ' production-card' : ''}`} aria-busy={loading || busy}>
     <span className="badge">{mode === 'production' ? 'Acesso de operador' : mode === 'local-demo' ? 'Simulação local' : 'Acesso indisponível'}</span>
     <h1>PersonaFlow</h1>
     <p className="intro">Um espaço para configurar e acompanhar as suas automações.</p>
     {loading ? <p role="status">Consultando sessão…</p> : operator ? <>
       <p>Olá, {operator}. Sua sessão está ativa.</p>
-      {mode === 'local-demo' ? <AccountChooser /> : <><ProductionPilot /><p className="muted">O painel de conversas e automações ainda não está habilitado para a conta real.</p></>}
+      {mode === 'local-demo' ? <AccountChooser /> : <><ProductionPilot /><ProductionInbox /><p className="muted">O painel mostra entradas registradas para revisão. Resposta pelo painel e automações gerais ainda não estão habilitadas para clientes.</p></>}
       <button disabled={busy} onClick={() => void act('sign-out')}>{busy ? 'Saindo…' : 'Sair'}</button>
     </> : <>
       {mode === 'production' ? <><p>Entre com a conta GitHub autorizada para administrar o acesso.</p><button disabled={busy} onClick={() => void act('sign-in/social')}>{busy ? 'Redirecionando…' : 'Entrar com GitHub'}</button></> : mode === 'local-demo' ? <><p>Entre com a identidade fictícia para explorar o ambiente local.</p><button disabled={busy} onClick={() => void act('sign-in/social')}>{busy ? 'Entrando…' : 'Entrar como operador fictício'}</button></> : <p className="muted">Configure um modo de autenticação válido para entrar.</p>}
