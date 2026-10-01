@@ -1,24 +1,23 @@
 # Pacote de preparação para análise do app Meta, piloto @somoskyber
 
-Preparado em **30/09/2026** para a configuração Instagram Login do app PersonaFlow Kyber. Este é um pacote para preencher a análise e gravar o screencast quando todos os gates técnicos estiverem prontos. Ele **não** solicita acesso, não envia submissão, não cria conta, não altera o painel Meta e não ativa OAuth, webhook ou envio.
+Preparado em **30/09/2026** e atualizado com o teste real de **01/10/2026** para a configuração Instagram Login do app PersonaFlow Kyber. Este é um pacote para preencher a análise e gravar o screencast. O documento não solicita acesso nem envia submissão.
 
 ## Leitura do estado e limite desta preparação
 
 | Afirmação | Classificação | Evidência e limite |
 | --- | --- | --- |
-| O piloto é somente a conta profissional @somoskyber e pretende uma única resposta privada, disparada por um comentário controlado no Reel escolhido. | Fato de produto aprovado | `src/jobs/pilot-setup.ts` fixa uma conta, um Reel, o termo `prévia` e uma regra; a escolha concreta do Reel ainda não existe. |
-| O OAuth pede `instagram_business_basic`, `instagram_business_manage_messages` e `instagram_business_manage_comments`. | Fato de código | `src/integrations/meta/oauth-contract.ts` forma o URL OAuth com exatamente esses três scopes. Isso não comprova que a Meta os concederá. |
+| O piloto é somente a conta profissional @somoskyber e uma resposta privada disparada por um comentário controlado no Reel escolhido. | Implementado e testado | `src/jobs/pilot-setup.ts` fixa conta, Reel e termo; a decisão e o transporte fixam também o ID do comentário. O teste real no Reel de 20/09 foi concluído em 01/10, conforme `STATUS.md`. |
+| O OAuth pede `instagram_business_basic`, `instagram_business_manage_messages` e `instagram_business_manage_comments`. | Código e uso real parcial | O callback vinculou a conta e a API confirmou leitura de mídia e comentários; uma DM de teste foi aceita e apareceu na conta pessoal. Isso não comprova acesso avançado para contas sem papel no app. |
 | A Meta receberá um pedido de Advanced Access somente se for preciso para esse piloto. | Decisão pendente | As fontes locais têm a divergência D-META-01: parte da documentação descreve Standard para uso próprio, mas a página específica de webhooks pode exigir Live e Advanced para `comments`. A decisão depende do painel e de um teste real autorizado. |
-| No painel, o caminho “Adicionar à análise do app” informou que o app precisa virar Provedor de Tecnologia, com verificação empresarial, verificação de acesso e App Review, e alertou que essa identificação não pode ser revertida. | Evidência fornecida pelo Pedro | Foi informado nesta tarefa. Não foi reproduzido nem confirmado por clique nesta preparação. Tratar a mudança como irreversível até confirmação no painel. |
+| No painel, o caminho “Adicionar à análise do app” exige Provedor de Tecnologia, com verificação empresarial, verificação de acesso e App Review, e alerta que essa identificação não pode ser revertida. | Confirmado no painel em 01/10 | O modal foi reproduzido após a DM controlada; a ação irreversível não foi confirmada. Decisão de Pedro solicitada. |
 | Retenção, exclusão e política pública estão definidas para o piloto. | Fato parcial | A política está publicada em `https://somoskyber.com.br/privacidade/personaflow`, segundo `docs/STATUS.md`; a rotina local de redação está implementada, mas o fluxo Meta de desautorização/exclusão e a validação operacional de logs ainda não estão comprovados. |
 
-### Estado que impede a gravação e a submissão hoje
+### Estado atual antes da análise
 
-1. Escolher ou publicar o Reel orgânico da Kyber e registrar seu ID no ambiente protegido. Em 30/09, `docs/STATUS.md` registra que esse Reel ainda não existia.
-2. Colocar a aplicação real atrás do HTTPS já preparado, com web e worker operando, sem expor segredos. O status registra DNS/TLS e banco, mas nenhum processo PersonaFlow em operação.
-3. Concluir OAuth real, callback, inscrição de `comments` e recepção de um evento real. O código os prevê, mas não há prova real.
-4. Validar a entrega de uma resposta privada a um interlocutor controlado. A aprovação HTTP da Meta e um teste de painel não substituem a DM recebida.
-5. Confirmar, no painel, se o app pode continuar como uso próprio ou se a mudança para Provedor de Tecnologia e Advanced Access é inevitável. Não fazer essa mudança só para descobrir o próximo campo.
+1. O Reel orgânico da Kyber foi escolhido e seu ID registrado na configuração privada. A web HTTPS, o banco e o worker estão ativos; o envio está desligado após o teste.
+2. OAuth, assinatura de `comments`, webhook real, seleção do comentário, aceite da API e DM recebida na conta pessoal foram observados em 01/10. Não repetir a DM para preencher checklist.
+3. A decisão sobre a identificação irreversível como Provedor de Tecnologia continua pendente. O teste com a conta de Pedro não prova acesso a comentários de clientes sem papel no app.
+4. Para submissão, ainda faltam os campos exigidos pela Meta, a demonstração revisável da interface de produção, o fluxo de exclusão/desautorização exigido e provas operacionais de retenção. Não declarar esses pontos concluídos por causa do piloto.
 
 ## Descrição curta para o formulário de análise
 
@@ -91,7 +90,7 @@ Não declarar ao revisor que dados são anonimizados só porque algum identifica
 ### Escopo e titularidade
 
 - [ ] Captura sanitizada do painel mostrando o app, o caso de uso Instagram Login e as três permissões, sem segredo ou token.
-- [ ] Confirmação de que @somoskyber é profissional, pública e administrada legitimamente pela Kyber.
+- [x] Confirmação em 01/10 de que @somoskyber é profissional, pública e administrada pelo portfólio Kyber Tech.
 - [ ] Decisão documentada: uso próprio permanece elegível ou a mudança irreversível para Provedor de Tecnologia foi aprovada pelo responsável.
 - [ ] Nenhuma conta de cliente, cadastro aberto ou função fora do piloto aparece no vídeo, descrição ou instruções.
 
@@ -104,12 +103,12 @@ Não declarar ao revisor que dados são anonimizados só porque algum identifica
 
 ### Comentário e DM controlados
 
-- [ ] Reel orgânico da Kyber escolhido, com ID conferido por fonte/conta autorizada e sem expor dado sensível.
-- [ ] Webhook HTTPS validado pelo challenge e assinatura HMAC verificada nos bytes recebidos.
-- [ ] Inscrição confirmada somente para `comments`; POST isolado não é aceito como evidência suficiente.
-- [ ] Comentário externo controlado `prévia` recebido no Reel escolhido, com horário/ID sanitizados.
-- [ ] Regra restringe conta, Reel, comentário exato, texto aprovado, token, geração, prazo e limite.
-- [ ] Única DM recebida pela segunda conta controlada; capturas ocultam perfis/identificadores que não sejam indispensáveis.
+- [x] Reel orgânico da Kyber escolhido, com ID conferido pela API oficial e pela interface em 01/10.
+- [x] Webhook HTTPS validado pelo challenge; um evento real chegou após a assinatura configurada.
+- [x] Inscrição de `comments` confirmada por consulta à API e painel em 01/10; `messages` também consta como campo assinado no app, sem automação de resposta.
+- [x] Comentário externo controlado `prévia` recebido no Reel escolhido às 02h54 UTC de 01/10; ID registrado sem corpo de cliente.
+- [x] Regra de teste restringe conta, Reel, comentário exato, texto aprovado, token, geração, prazo e limite; código e integrações revisados em 01/10.
+- [x] Uma DM apareceu na conversa da conta pessoal de Pedro no Instagram Web em 01/10. Captura privada pode compor screencast sanitizado; recebimento por cliente não foi testado.
 - [ ] Timeout, rede ou 5xx deixam a intenção como incerta e bloqueiam reenvio automático.
 
 ### Privacidade e operação
