@@ -73,7 +73,9 @@ describe('PF-011: PostgreSQL e pg-boss reais', () => {
     const after = createBoss();
     await after.start();
     try {
-      await after.work(INBOUND_QUEUE, async (jobs) => {
+      // Outros testes deixam jobs válidos na mesma fila; processar o lote evita que
+      // a ordem global do banco de CI atrase apenas o evento desta fixture.
+      await after.work(INBOUND_QUEUE, { batchSize: 100, pollingIntervalSeconds: 0.5 }, async (jobs) => {
         for (const job of jobs) await processInboundEvent(db, job.data);
       });
       await waitUntil(async () => Boolean((await db.inboundEvent.findUnique({
@@ -82,7 +84,7 @@ describe('PF-011: PostgreSQL e pg-boss reais', () => {
     } finally {
       await after.stop();
     }
-  });
+  }, 15_000);
 
   it('falha do worker não executa transporte externo nem processa evento sem novo claim', async () => {
     const a = await account('crash');
@@ -103,7 +105,7 @@ describe('PF-011: PostgreSQL e pg-boss reais', () => {
     } finally {
       await boss.stop();
     }
-  });
+  }, 15_000);
 });
 
 describe('PF-012: isolamento de contas fictícias', () => {

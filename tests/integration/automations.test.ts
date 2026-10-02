@@ -26,6 +26,19 @@ beforeEach(() => { vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Re
 afterEach(() => { expect(vi.mocked(globalThis.fetch).mock.calls).toHaveLength(0); vi.restoreAllMocks(); });
 afterAll(async () => { await boss.stop(); await db.$disconnect(); });
 describe('PF-023-L: receita transacional PostgreSQL', () => {
+  it('comentário de prévia aceita uma única DM sem link nem sequência', async () => {
+    const f = await fixture();
+    const pilot = { ...emptyRecipe, terms: ['prévia'], introduction: 'Me mande o Instagram do negócio ou fotos.' };
+    const draft = await saveAutomation(db, f.account.id, { name: 'Prévia Kyber', mediaId: 'synthetic-reel-1', config: pilot }, f.automation.id, f.automation.revision);
+    await setAutomationStatus(db, f.account.id, draft.id, 'active', draft.revision);
+    await db.inboundEvent.update({ where: { accountId_id: { accountId: f.account.id, id: f.event.id } },
+      data: { payload: { actorId: f.contact.igScopedUserId, text: 'Quero uma prévia!', mediaId: 'synthetic-reel-1', echo: false, buttonPayload: null } } });
+    await process(f.account.id, f.event.id);
+    const intents = await db.deliveryIntent.findMany({ where: { accountId: f.account.id } });
+    expect(intents).toHaveLength(1);
+    expect(intents[0].effect).toBe('private_reply');
+    expect(intents[0].body).toEqual({ text: pilot.introduction });
+  });
   it('comentário concorrente/replay gera uma intenção/job/efeito com textos configurados; A não escreve B', async () => {
     const a = await fixture(), b = await fixture();
     await Promise.all([1, 2, 3].map(() => process(a.account.id, a.event.id)));

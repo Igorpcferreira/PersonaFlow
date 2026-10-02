@@ -15,8 +15,10 @@ export async function organizeConversation(db: Database, accountId: string, conv
     if (!existing) throw new RequestRejected(404);
     await lockConversation(tx, accountId, conversationId);
     if (existing.organizationVersion !== parsed.data.version) throw new RequestRejected(409, 'A organização da conversa mudou. Atualize antes de salvar.');
+    const note = parsed.data.note || null;
     return tx.conversation.update({ where: { accountId_id: { accountId, id: conversationId } }, data: {
-      status: parsed.data.status, note: parsed.data.note || null, organizationVersion: { increment: 1 },
+      status: parsed.data.status, note, organizationVersion: { increment: 1 },
+      ...(existing.note !== note ? { noteUpdatedAt: note ? new Date() : null } : {}),
     }, select: { id: true, accountId: true, status: true, note: true, organizationVersion: true } });
   });
 }

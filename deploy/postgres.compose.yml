@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16.11-alpine
+    container_name: personaflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no arquivo privado postgres.env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no arquivo privado postgres.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo privado postgres.env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - personaflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+volumes:
+  personaflow-postgres-data:
+    name: personaflow-postgres-data

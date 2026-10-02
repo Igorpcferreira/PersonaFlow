@@ -21,8 +21,8 @@ test('PF-023/100-L: editor por reel ativa privada/pública próprias, edita e re
   await page.getByLabel('DM de apresentação').fill('Apresentação editável de Aurora');
   await page.getByLabel('Resposta pública opcional', { exact: true }).check();
   await page.getByLabel('Texto da resposta pública').fill('Resposta pública editável de Aurora');
-  await page.getByLabel('Mensagem final', { exact: true }).fill('Final editável da receita');
-  await page.getByLabel('Link final').fill('https://example.invalid/aurora');
+  await page.getByLabel('Mensagem adicional (opcional)', { exact: true }).fill('Final editável da receita');
+  await page.getByLabel('Link (opcional)', { exact: true }).fill('https://example.invalid/aurora');
   await expect(page.locator('.recipe-preview').getByText('Apresentação editável de Aurora')).toBeVisible();
   await expect(page.locator('.recipe-preview').getByText('Resposta pública: Resposta pública editável de Aurora')).toBeVisible();
   await page.getByRole('button', { name: 'Salvar rascunho' }).click();

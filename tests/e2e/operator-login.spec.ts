@@ -31,5 +31,8 @@ test('carregamento e erro da sessão são visíveis e recuperáveis', async ({ p
   await expect(page.getByRole('status')).toHaveText('Consultando sessão…');
   release();
   await expect(page.getByRole('alert').filter({ hasText: 'Não foi possível consultar' })).toBeVisible();
+  await expect(page.getByText('Configure um modo de autenticação válido para entrar.')).toBeVisible();
+  await page.unroute('**/api/operator');
+  await page.reload();
   await expect(page.getByRole('button', { name: 'Entrar como operador fictício' })).toBeEnabled();
 });

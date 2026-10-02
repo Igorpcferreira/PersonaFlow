@@ -1,0 +1,11 @@
+[Unit]
+Description=Rotate private PersonaFlow logs
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/sbin/logrotate -s %h/.local/state/personaflow/logrotate.status %h/.config/personaflow/logrotate.conf
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/personaflow

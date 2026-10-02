@@ -3,7 +3,7 @@ name: CI local simulated MVP
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master, main]
 
 jobs:
   verify:

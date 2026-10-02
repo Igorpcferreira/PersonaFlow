@@ -1,0 +1,19 @@
+[Unit]
+Description=PersonaFlow retention dry run for the configured pilot account
+Requires=personaflow-postgres.service
+After=personaflow-postgres.service
+
+[Service]
+Type=oneshot
+UMask=0077
+WorkingDirectory=__PERSONAFLOW_RELEASE_DIR__
+Environment=NODE_ENV=production
+EnvironmentFile=%h/.config/personaflow/personaflow.env
+ExecStartPre=/usr/bin/mkdir -p %h/.local/state/personaflow/logs
+ExecStart=/usr/bin/flock -n %h/.local/state/personaflow/retention.lock /home/pedro/.local/bin/node node_modules/tsx/dist/cli.mjs src/jobs/retention.ts --account-id ${META_INSTAGRAM_PILOT_ACCOUNT_ID}
+StandardOutput=append:%h/.local/state/personaflow/logs/retention.log
+StandardError=append:%h/.local/state/personaflow/logs/retention.log
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ReadWritePaths=__PERSONAFLOW_RELEASE_DIR__ %h/.local/state/personaflow

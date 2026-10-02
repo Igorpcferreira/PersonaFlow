@@ -2,7 +2,7 @@
 
 MVP local de uma ferramenta auto-hospedada, exclusivamente para Instagram, com duas contas fictícias independentes.
 
-**Estado: MVP local autorizado concluído e validado em 28/09/2026.** Login fictício, inbox/manual, editor por reel/DM/story, pública/botão/seguir/link, notas/filtros/métricas e diagnóstico usam PostgreSQL e fila locais. Providers e efeitos são sintéticos; isso não comprova integração Meta. Contas/apps reais, VPS e deploy fora do escopo.
+**Estado: MVP local concluído e validado em 28/09/2026; operação real ainda não implementada.** Login fictício, inbox/manual, editor por reel/DM/story, pública/botão/seguir/link, notas/filtros/métricas e diagnóstico usam PostgreSQL e fila locais. Providers e efeitos são sintéticos; isso não comprova integração Meta. Em 30/09, Pedro pediu concluir o produto para a Kyber e hospedar na VPS. O pedido amplia o objetivo anterior, mas contas, envio real e deploy continuam pendentes de implementação e teste.
 
 Comece pelo [índice da documentação](docs/README.md). Para retomar com um agente, leia [AGENTS.md](AGENTS.md), [estado atual](docs/STATUS.md), [handoff](docs/HANDOFF.md) e [backlog](docs/BACKLOG.md).
 

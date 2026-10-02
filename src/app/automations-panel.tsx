@@ -88,8 +88,8 @@ export default function AutomationsPanel({ accountId }: { accountId: string }) {
         <label className="checkbox"><input type="checkbox" checked={config.followRequired} onChange={(event) => change('followRequired', event.target.checked)} /> Pedir para seguir antes do link</label>
         {config.followRequired && <label>Pedido para seguir<textarea value={config.followPrompt} maxLength={2000} onChange={(event) => change('followPrompt', event.target.value)} /></label>}
         </>}
-        <label>Mensagem final<textarea value={config.finalMessage} maxLength={2000} onChange={(event) => change('finalMessage', event.target.value)} /></label>
-        <label>Link final<input value={config.link} maxLength={2000} type="url" onChange={(event) => change('link', event.target.value)} placeholder="https://" /></label>
+        <label>{trigger === 'comment' && !config.buttonEnabled ? 'Mensagem adicional (opcional)' : 'Mensagem final'}<textarea value={config.finalMessage} maxLength={2000} onChange={(event) => change('finalMessage', event.target.value)} /></label>
+        <label>{trigger === 'comment' && !config.buttonEnabled ? 'Link (opcional)' : 'Link final'}<input value={config.link} maxLength={2000} type="url" onChange={(event) => change('link', event.target.value)} placeholder="https://" /></label>
         <div className="control-actions"><button disabled={busy} onClick={() => void perform('save')}>Salvar rascunho</button>
           <button className="secondary" disabled={busy || !selected || dirty || selected.status === 'active'} onClick={() => void perform('activate')}>Ativar localmente</button>
           <button className="secondary" disabled={busy || !selected || selected.status !== 'active'} onClick={() => void perform('pause')}>Pausar automação</button></div>
@@ -98,8 +98,8 @@ export default function AutomationsPanel({ accountId }: { accountId: string }) {
         {config.publicReplyEnabled && <p>Resposta pública: {config.publicReply || 'Preencha o texto.'}</p>}
         {config.buttonEnabled && <span className="badge">{config.buttonTitle || 'Texto do botão'}</span>}
         {config.followRequired && <p>{config.followPrompt || 'Preencha o pedido para seguir.'}</p>}
-        <p>{config.finalMessage || 'Sua mensagem final aparecerá aqui.'}</p><p className="preview-link">{config.link || 'Seu link aparecerá aqui.'}</p>
-        {!config.buttonEnabled && <p className="muted">Sem botão, apresentação, mensagem final e link compõem uma única resposta privada.</p>}
+        {(config.finalMessage || config.buttonEnabled) && <p>{config.finalMessage || 'Sua mensagem final aparecerá aqui.'}</p>}{(config.link || config.buttonEnabled) && <p className="preview-link">{config.link || 'Seu link aparecerá aqui.'}</p>}
+        {!config.buttonEnabled && <p className="muted">Uma única resposta privada. Mensagem adicional e link são opcionais; sem resposta da pessoa, o fluxo para aqui.</p>}
         </>}
         <label>{trigger === 'comment' ? 'Comentário para simular' : 'Texto para simular'}<input value={comment} maxLength={2000} disabled={busy} onChange={(event) => setComment(event.target.value)} /></label>
         <p className="muted">{comment ? matchingTerm(comment, terms.split(/\n|,/)) ? 'Uma palavra da receita foi encontrada.' : 'Nenhuma palavra da receita foi encontrada.' : 'Teste uma palavra ou expressão da sua receita.'}</p>

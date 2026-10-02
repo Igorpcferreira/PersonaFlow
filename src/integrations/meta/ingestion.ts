@@ -6,7 +6,6 @@ import { enqueueEventJob } from '../../jobs/queue';
 import { InvalidWebhook, parseSignedWebhook, readWebhookBytes, type CanonicalEvent, type WebhookApp } from './webhook';
 
 export async function persistWebhookBatch(db: Database, boss: PgBoss, app: WebhookApp, events: CanonicalEvent[]) {
-  if (app.kind !== 'synthetic') throw new InvalidWebhook();
   return db.$transaction(async (tx) => {
     const accounts = await tx.instagramAccount.findMany({ where: { professionalId: { in: [...new Set(events.map((event) => event.professionalId))] } }, orderBy: { id: 'asc' } });
     for (const account of accounts) await lockAccount(tx, account.id);
@@ -14,6 +13,7 @@ export async function persistWebhookBatch(db: Database, boss: PgBoss, app: Webho
     const byProfessional = new Map(current.map((account) => [account.professionalId, account]));
     let inserted = 0, duplicate = 0, ignored = 0;
     for (const event of events) {
+      if (app.kind === 'meta' && event.professionalId !== app.pilotProfessionalId) { ignored += 1; continue; }
       const account = byProfessional.get(event.professionalId);
       if (!account || account.webhookAppAlias !== app.alias || account.webhookGeneration !== account.connectionGeneration ||
           !account.webhookFields.includes(event.field) || !account.credential || account.credential.revokedAt ||
@@ -36,9 +36,10 @@ export async function handleWebhookPost(request: Request, db: Database, boss: Pg
     if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new InvalidWebhook();
     const parsed = parseSignedWebhook(app, await readWebhookBytes(request), request.headers.get('x-hub-signature-256'));
     const result = await persistWebhookBatch(db, boss, app, parsed.events);
-    return Response.json({ simulation: true, ...result, ignored: result.ignored + parsed.ignored }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(app.kind === 'synthetic' ? { simulation: true, ...result, ignored: result.ignored + parsed.ignored } : { received: true },
+      { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return Response.json({ error: error instanceof InvalidWebhook ? 'Webhook local recusado.' : 'Persistência indisponível; reentrega necessária.' }, {
+    return Response.json({ error: error instanceof InvalidWebhook ? 'Webhook recusado.' : 'Persistência indisponível; reentrega necessária.' }, {
       status: error instanceof InvalidWebhook ? 400 : 503, headers: { 'Cache-Control': 'no-store' },
     });
   }

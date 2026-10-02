@@ -45,12 +45,20 @@ function AccountView({ accountId }: { accountId: string }) {
   return <main className="workspace">
     <header className="workspace-header"><Link className="brand" href="/">PersonaFlow</Link><span className="badge">Simulação local</span><Link href="/">Trocar conta</Link></header>
     {error ? <p role="alert" className="error">{error}</p> : !account ? <p role="status">Carregando conta…</p> : <>
-      <h1>{account.label}</h1><p className="muted">Ambiente fictício. Todos os efeitos ficam nesta demonstração.</p>
-      <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Inbox</a><a href="#automations">Automações</a><a href="#sequences">Sequências</a><a href="#diagnostics">Diagnóstico</a></nav>
-      <InboxPanel key={`inbox:${accountId}`} accountId={accountId} />
-      <AutomationsPanel key={`automations:${accountId}`} accountId={accountId} />
-      <SequencesPanel key={`sequences:${accountId}`} accountId={accountId} />
-      <DiagnosticsPanel key={`diagnostics:${accountId}`} accountId={accountId} />
+      <div className="workspace-frame">
+        <aside className="workspace-sidebar" aria-label="Conta e navegação">
+          <div className="sidebar-account"><span className="sidebar-caption">Conta selecionada</span><strong>{account.label}</strong><span className="sidebar-state">{account.pausedAt ? 'Automações pausadas' : 'Ambiente de teste'}</span></div>
+          <nav className="workspace-nav" aria-label="Seções da conta"><a href="#inbox">Conversas</a><a href="#automations">Automações</a><a href="#sequences">Sequências</a><a href="#diagnostics">Diagnóstico</a></nav>
+          <p className="sidebar-note">Nenhuma mensagem desta demonstração chega ao Instagram.</p>
+        </aside>
+        <div className="workspace-content">
+          <div className="workspace-intro"><div><p className="workspace-kicker">Painel da conta</p><h1>{account.label}</h1></div><p>Configure respostas, acompanhe conversas e confira o estado da conta.</p></div>
+          <InboxPanel key={`inbox:${accountId}`} accountId={accountId} />
+          <AutomationsPanel key={`automations:${accountId}`} accountId={accountId} />
+          <SequencesPanel key={`sequences:${accountId}`} accountId={accountId} />
+          <DiagnosticsPanel key={`diagnostics:${accountId}`} accountId={accountId} />
+        </div>
+      </div>
     </>}
   </main>;
 }

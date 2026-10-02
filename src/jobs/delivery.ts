@@ -2,22 +2,34 @@ import { z } from 'zod';
 import type { PgBoss } from 'pg-boss';
 import type { Database } from '../shared/db';
 import { TokenVault } from '../modules/accounts/token-vault';
-import { DELIVERY_QUEUE, simulationOutcomes } from '../modules/delivery/ledger';
-import { executeIntent } from '../modules/delivery/executor';
+import { DELIVERY_QUEUE, META_PILOT_DELIVERY_QUEUE, simulationOutcomes } from '../modules/delivery/ledger';
+import { executeIntent, type MetaPilotTransport } from '../modules/delivery/executor';
 import { FakeTransport, type SyntheticTransport } from '../integrations/meta/fake-transport';
 
 const jobSchema = z.object({ accountId: z.uuid(), intentId: z.uuid() }).strict();
+const META_PILOT_SCAN_BATCH_SIZE = 1;
 async function outcomeTransport(db: Database, accountId: string, intentId: string) {
   const intent = await db.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId, id: intentId } }, select: { simulationOutcome: true } });
   return new FakeTransport(db, z.enum(simulationOutcomes).parse(intent.simulationOutcome));
 }
-export async function sweepDeliveryAccount(db: Database, vault: TokenVault, transport: SyntheticTransport | undefined, accountId: string, now?: Date) {
+export async function sweepDeliveryAccount(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport | undefined, accountId: string, now?: Date) {
   if (!z.uuid().safeParse(accountId).success) throw new Error('Conta de manutenção inválida.');
   const scanAt = now ?? new Date();
-  const intents = await db.deliveryIntent.findMany({ where: { accountId, OR: [
+  const due = { OR: [
     { status: 'pending', OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: scanAt } }] },
     { status: 'sending', reservedUntil: { lte: scanAt } },
-  ] }, orderBy: { createdAt: 'asc' }, take: 20, select: { id: true } });
+  ] };
+  const selectedComment = transport?.kind === 'meta' && transport.scope === 'test-comment' ? `comment:${transport.commentId}` : null;
+  if (transport?.kind === 'meta') {
+    // The campaign public reply is separately checked against an accepted private reply in the executor.
+    await db.deliveryIntent.updateMany({ where: { accountId, source: 'automatic', effect: 'private_reply', status: 'pending', OR: [
+      { event: { is: null } }, ...(selectedComment ? [{ event: { is: { externalId: { not: selectedComment } } } }] : []),
+    ] }, data: { status: 'blocked', reason: 'pilot_policy_denied', nextAttemptAt: null } });
+  }
+  const intents = await db.deliveryIntent.findMany({ where: transport?.kind === 'meta'
+    ? { accountId, ...due, source: 'automatic', effect: transport.scope === 'campaign' ? { in: ['private_reply', 'public_reply'] } : 'private_reply',
+        ...(selectedComment ? { event: { is: { externalId: selectedComment } } } : {}) }
+    : { accountId, ...due }, orderBy: { createdAt: 'asc' }, take: transport?.kind === 'meta' ? META_PILOT_SCAN_BATCH_SIZE : 20, select: { id: true } });
   for (const intent of intents) await executeIntent(db, vault, transport ?? await outcomeTransport(db, accountId, intent.id), { accountId, intentId: intent.id }, { now });
   await db.workerHeartbeat.upsert({ where: { accountId_kind: { accountId, kind: 'delivery' } },
     create: { accountId, kind: 'delivery', seenAt: new Date() }, update: { seenAt: new Date() } });
@@ -44,6 +56,62 @@ export async function startSyntheticDeliveryWorker(db: Database, boss: PgBoss, v
       .finally(() => { active = undefined; });
   };
   const interval = setInterval(tick, 1000);
+  tick();
+  return async () => { stopped = true; clearInterval(interval); await active; };
+}
+
+/** Production worker is deliberately limited to the one configured account and private reply. */
+export async function startMetaPilotDeliveryWorker(db: Database, boss: PgBoss, vault: TokenVault, transport: MetaPilotTransport) {
+  const expectedMode = transport.scope === 'campaign' ? 'meta-campaign-private-reply' : 'meta-private-reply';
+  if (process.env.PERSONAFLOW_MODE !== 'production' || process.env.PERSONAFLOW_SEND_MODE !== expectedMode)
+    throw new Error('Envio Meta não habilitado.');
+  await boss.createQueue(META_PILOT_DELIVERY_QUEUE);
+  await boss.work(META_PILOT_DELIVERY_QUEUE, { pollingIntervalSeconds: 0.5, teamSize: 1 }, async (jobs) => {
+    for (const job of jobs) {
+      const context = jobSchema.parse(job.data);
+      if (context.accountId !== transport.accountId) throw new Error('Job fora da conta piloto.');
+      await executeIntent(db, vault, transport, context);
+    }
+  });
+  let stopped = false;
+  let active: Promise<void> | undefined;
+  const tick = () => {
+    if (stopped || active) return;
+    active = sweepDeliveryAccount(db, vault, transport, transport.accountId)
+      .catch(() => { console.error(JSON.stringify({ code: 'meta_pilot_delivery_scan_failed' })); })
+      .finally(() => { active = undefined; });
+  };
+  const interval = setInterval(tick, 5_000);
+  tick();
+  return async () => { stopped = true; clearInterval(interval); await active; };
+}
+
+/** Crash recovery never performs a provider request, including when delivery is disabled. */
+export async function recoverExpiredMetaReservations(db: Database, accountId: string, now = new Date()) {
+  if (!z.uuid().safeParse(accountId).success) throw new Error('Conta inválida.');
+  const expired = await db.deliveryIntent.findMany({ where: { accountId, status: 'sending', reservedUntil: { lte: now } },
+    select: { id: true }, take: 20 });
+  for (const item of expired) await db.$transaction(async (tx) => {
+    const current = await tx.deliveryIntent.findUniqueOrThrow({ where: { accountId_id: { accountId, id: item.id } } });
+    if (current.status !== 'sending' || !current.reservedUntil || current.reservedUntil > now) return;
+    await tx.deliveryAttempt.updateMany({ where: { accountId, intentId: item.id, status: 'started' },
+      data: { status: 'unknown', endedAt: now } });
+    await tx.deliveryIntent.update({ where: { accountId_id: { accountId, id: item.id } },
+      data: { status: 'unknown', reason: 'worker_interrupted', reservedUntil: null } });
+  });
+  return expired.length;
+}
+
+export function startMetaPilotRecovery(db: Database, accountId: string) {
+  let active: Promise<unknown> | undefined;
+  let stopped = false;
+  const tick = () => {
+    if (stopped || active) return;
+    active = recoverExpiredMetaReservations(db, accountId)
+      .catch(() => { console.error(JSON.stringify({ code: 'meta_pilot_recovery_failed' })); })
+      .finally(() => { active = undefined; });
+  };
+  const interval = setInterval(tick, 5_000);
   tick();
   return async () => { stopped = true; clearInterval(interval); await active; };
 }

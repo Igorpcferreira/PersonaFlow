@@ -1,0 +1,12 @@
+__PERSONAFLOW_LOG_DIR__/retention.log {
+    daily
+    rotate 30
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su __PERSONAFLOW_SERVICE_USER__ __PERSONAFLOW_SERVICE_USER__
+    create 0600 __PERSONAFLOW_SERVICE_USER__ __PERSONAFLOW_SERVICE_USER__
+}

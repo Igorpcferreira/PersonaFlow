@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily rotation of private PersonaFlow logs
+
+[Timer]
+OnCalendar=*-*-* 03:23:00
+Persistent=true
+Unit=personaflow-logs.service
+
+[Install]
+WantedBy=timers.target

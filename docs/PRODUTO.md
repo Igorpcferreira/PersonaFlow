@@ -1,8 +1,14 @@
 # Produto e MVP
 
+## Piloto da Kyber decidido em 30/09/2026
+
+Pedro decidiu começar apenas pela conta profissional @somoskyber, embora o projeto original tenha sido desenhado para duas contas. O caso inicial é um Reels próprio com comentário “prévia” e **uma DM inicial**. Depois da resposta da pessoa, o atendimento fica para revisão humana. Não ativar resposta pública, botão, exigência de seguir, segunda DM automática, link ou cadastro de lead como consequência desse primeiro comentário. A pessoa pode informar o Instagram do negócio ou fotos; não pedir dados adicionais antes de haver necessidade.
+
+Essa decisão é objetivo do piloto, não estado implementado: em 30/09/2026 a integração Meta, o login administrativo de produção e o deploy ainda não existem. Pedro aprovou o texto da primeira DM para o teste real: “Oi! Vi seu pedido de prévia. Me manda o @ do seu negócio ou algumas fotos para eu entender o que você faz? Eu continuo por aqui depois.” O app Meta ainda aguarda criação no portfólio da Kyber. A primeira DM enviada não prova entrega nem abre por si só uma janela para continuação automática. Preservar uma opção explícita de pausa e transferência para atendimento humano.
+
 ## Objetivo
 
-Reduzir o trabalho repetitivo de responder pedidos de conteúdo e primeiros contatos comerciais no Instagram, com controle visível sobre o que cada conta envia. O primeiro operador é Igor; as duas contas representam contextos separados: criação de conteúdo e Kyber Tech. Outros desenvolvedores poderão instalar suas próprias cópias. Não haverá cadastro público, cobrança ou administração de clientes na instância inicial.
+Reduzir o trabalho repetitivo de responder pedidos de conteúdo e primeiros contatos comerciais no Instagram, com controle visível sobre o que cada conta envia. O desenho original considerava Igor como primeiro operador e duas contas separadas: criação de conteúdo e Kyber Tech. O piloto autorizado por Pedro começa somente com a Kyber Tech. Outros desenvolvedores poderão instalar suas próprias cópias. Não haverá cadastro público, cobrança ou administração de clientes na instância inicial.
 
 Substituir o ManyChat é uma hipótese de adequação aos fluxos realmente usados, não promessa de equivalência. Em 27/09/2026 o usuário forneceu um exemplo real da @somoskyber em três prints; ainda faltam exemplos específicos da @igor_cferreira, volume e custo da assinatura. A [matriz de viabilidade](VIABILIDADE.md) separa possibilidade técnica de prioridade.
 

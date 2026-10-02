@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { MAX_WEBHOOK_BYTES, parseSignedWebhook, readWebhookBytes, signSyntheticWebhook, verifyWebhookChallenge, type WebhookApp } from '../../src/integrations/meta/webhook';
 import { syntheticBatch } from '../fixtures/meta/batch';
@@ -28,6 +28,14 @@ describe('PF-016-L: bytes, identidade e parsing', () => {
     const stream = new ReadableStream({ start(controller) { controller.enqueue(Buffer.alloc(MAX_WEBHOOK_BYTES)); controller.enqueue(Buffer.from('x')); controller.close(); } });
     await expect(readWebhookBytes(new Request('http://127.0.0.1/webhook', { method: 'POST', body: stream, duplex: 'half' } as RequestInit))).rejects.toThrow('omitidos');
   });
+  it('aceita assinatura da Meta sem permitir que o helper fictício assine em nome dela', () => {
+    const meta: WebhookApp = { ...app, kind: 'meta', pilotProfessionalId: '123' };
+    const bytes = encode(syntheticBatch(['account-A'], 'meta-id'));
+    const signature = `sha256=${createHmac('sha256', meta.secret).update(bytes).digest('hex')}`;
+    expect(parseSignedWebhook(meta, bytes, signature).events).toHaveLength(2);
+    expect(() => signSyntheticWebhook(meta, bytes)).toThrow('omitidos');
+    expect(() => parseSignedWebhook(meta, bytes, signSyntheticWebhook(app, Buffer.from('outro corpo')))).toThrow('omitidos');
+  });
   it('evolução aditiva não altera roteamento, tipos desconhecidos não disparam; campos essenciais inválidos recusam lote', () => {
     const value = syntheticBatch(['A', 'B'], 'id');
     const events = parse(value).events;
@@ -56,6 +64,7 @@ describe('PF-016-L: bytes, identidade e parsing', () => {
     const url = new URL('http://127.0.0.1/api/local-webhook');
     url.search = new URLSearchParams({ 'hub.mode': 'subscribe', 'hub.verify_token': app.verifyToken, 'hub.challenge': '1234' }).toString();
     expect(await verifyWebhookChallenge(app, new Request(url)).text()).toBe('1234');
+    expect(await verifyWebhookChallenge({ ...app, kind: 'meta', pilotProfessionalId: '123' }, new Request(url)).text()).toBe('1234');
     url.searchParams.set('hub.verify_token', 'wrong');
     expect(() => verifyWebhookChallenge(app, new Request(url))).toThrow('omitidos');
   });
