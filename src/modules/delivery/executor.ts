@@ -9,7 +9,7 @@ import { DAY, deliveryBody } from './ledger';
 import { readSyntheticFollow } from '../automations/sequence-profile';
 import { sendMetaPrivateReply, type MetaPrivateReplyOptions } from '../../integrations/meta/private-reply';
 import { sendMetaPublicReply } from '../../integrations/meta/public-reply';
-import { isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_APPROVED_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { canonicalApprovedCampaignMediaId, isApprovedFutureMetaPilotRecipe, META_CAMPAIGN_APPROVED_TEXT, META_PILOT_APPROVED_TEXT, metaPilotTestCommentExternalId, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { validateMetaPilot } from '../../integrations/meta/pilot-policy';
 import { recipeConfig, readyRecipe } from '../automations/recipe';
 
@@ -25,7 +25,7 @@ const metaTransportSchema = z.object({ kind: z.literal('meta'), graphVersion: z.
   commentId: z.string().regex(/^[1-9]\d*$/).optional(), scope: z.enum(['test-comment', 'campaign']),
   webhookAlias: z.string().regex(/^[a-z0-9-]{1,50}$/) });
 
-function metaPilotTransportEnabled(transport: MetaPilotTransport, context: { accountId: string }) {
+function metaPilotTransportEnabled(transport: MetaPilotTransport, context: { accountId: string }, rawMediaId?: string | null) {
   if (process.env.PERSONAFLOW_MODE !== 'production' || context.accountId !== transport.accountId || !metaTransportSchema.safeParse(transport).success ||
       process.env.META_INSTAGRAM_PILOT_ACCOUNT_ID !== transport.accountId || process.env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID !== transport.professionalId ||
       process.env.META_WEBHOOK_APP_ALIAS !== transport.webhookAlias || process.env.META_INSTAGRAM_GRAPH_VERSION !== transport.graphVersion) return false;
@@ -33,7 +33,8 @@ function metaPilotTransportEnabled(transport: MetaPilotTransport, context: { acc
     process.env.META_INSTAGRAM_PILOT_REEL_ID === transport.reelId && metaPilotTestCommentExternalId(process.env) === `comment:${transport.commentId}`;
   const campaign = readApprovedFutureMetaPilot(process.env);
   return campaign !== null && campaign.accountId === transport.accountId && campaign.professionalId === transport.professionalId &&
-    campaign.reelId === transport.reelId && campaign.webhookAlias === transport.webhookAlias;
+    campaign.reelId === transport.reelId && campaign.webhookAlias === transport.webhookAlias &&
+    (rawMediaId === undefined || canonicalApprovedCampaignMediaId(campaign, rawMediaId) === transport.reelId);
 }
 export async function executeIntent(db: Database, vault: TokenVault, transport: SyntheticTransport | MetaPilotTransport,
   context: { accountId: string; intentId: string }, options: ExecutionOptions = {}) {
@@ -95,11 +96,15 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
       const approvedPrivateText = transport.scope === 'campaign' ? META_CAMPAIGN_APPROVED_TEXT : META_PILOT_APPROVED_TEXT;
       const payload = event?.payload as { text?: unknown; mediaId?: unknown; echo?: unknown } | null;
       const isCampaignPublic = transport.scope === 'campaign' && intent.effect === 'public_reply';
-      const approved = event && payload && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
+      const currentCampaign = transport.scope === 'campaign' ? readApprovedFutureMetaPilot(process.env) : null;
+      const canonicalRawMediaId = transport.scope === 'campaign'
+        ? currentCampaign && canonicalApprovedCampaignMediaId(currentCampaign, typeof payload?.mediaId === 'string' ? payload.mediaId : null)
+        : typeof payload?.mediaId === 'string' ? payload.mediaId : null;
+      const approved = event && payload && canonicalRawMediaId !== null && validateMetaPilot({ professionalId: BigInt(transport.professionalId),
         mediaId: transport.reelId, keyword: 'prévia', acceptUnaccented: transport.scope === 'campaign', approvedText: approvedPrivateText }, {
         account: { professionalId: account.professionalId },
         event: { professionalId: account.professionalId, kind: event.kind as 'comment',
-          mediaId: typeof payload.mediaId === 'string' ? payload.mediaId : null,
+          mediaId: canonicalRawMediaId,
           text: typeof payload.text === 'string' ? payload.text : null, echo: payload.echo === true },
         intent: { source: intent.source as 'automatic', effect: 'private_reply', body: isCampaignPublic ? { text: approvedPrivateText } : body.data! },
       }).allowed;
@@ -109,7 +114,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
           account.webhookAppAlias !== transport.webhookAlias || intent.source !== 'automatic' ||
           (intent.effect !== 'private_reply' && !isCampaignPublic) || !event?.externalId.match(/^comment:[1-9]\d*$/) ||
           (transport.scope === 'test-comment' && !selectedComment) ||
-          automation?.mediaId !== transport.reelId || !approved || !recipe?.success ||
+          automation?.mediaId !== transport.reelId || canonicalRawMediaId !== transport.reelId || !approved || !recipe?.success ||
           !readyRecipe(recipe.data, 'comment') || recipe.data.buttonEnabled ||
           recipe.data.followRequired || recipe.data.link ||
           (transport.scope === 'test-comment' && recipe.data.publicReplyEnabled) ||
@@ -151,7 +156,8 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     const attempt = await tx.deliveryAttempt.create({ data: { accountId: context.accountId, intentId: intent.id, number, startedAt: now } });
     await tx.deliveryIntent.update({ where: { accountId_id: { accountId: context.accountId, id: intent.id } },
       data: { status: 'sending', reservedUntil: new Date(now.getTime() + (options.leaseMs ?? 30_000)), reason: null, nextAttemptAt: null } });
-    return { intent, attempt, body: body.data!, accessToken, commentExternalId: event?.externalId.slice('comment:'.length) ?? '' };
+    return { intent, attempt, body: body.data!, accessToken, commentExternalId: event?.externalId.slice('comment:'.length) ?? '',
+      rawMediaId: typeof (event?.payload as { mediaId?: unknown } | null)?.mediaId === 'string' ? (event!.payload as { mediaId: string }).mediaId : null };
   });
   if (reserved) {
     const controller = new AbortController();
@@ -163,7 +169,7 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
     try {
       if (transport.kind === 'meta') {
         // Recheck immediately before HTTP so a changed or removed gate cannot use an existing reservation.
-        if (!metaPilotTransportEnabled(transport, context) ||
+        if (!metaPilotTransportEnabled(transport, context, reserved.rawMediaId) ||
             (transport.scope === 'test-comment' && reserved.commentExternalId !== transport.commentId)) {
           status = 'blocked'; reason = 'pilot_policy_denied';
         } else {

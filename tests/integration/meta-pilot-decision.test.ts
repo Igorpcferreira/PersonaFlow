@@ -62,6 +62,21 @@ describe('decisão do piloto Meta em PostgreSQL isolado', () => {
     ]);
   });
 
+  it('modo de campanha cria uma única intenção para o alias AD explícito e preserva o ID bruto', async () => {
+    const campaignReel = '18123125078313719', adMediaId = '18017974439949523';
+    const f = await fixture({ mediaId: adMediaId, ruleMediaId: campaignReel, text: 'PREVIA',
+      config: { ...emptyRecipe, terms: ['prévia', 'previa'], introduction: META_CAMPAIGN_APPROVED_TEXT } });
+    vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');
+    vi.stubEnv('META_INSTAGRAM_PILOT_ACCOUNT_ID', f.accountId); vi.stubEnv('META_INSTAGRAM_PILOT_PROFESSIONAL_ID', pilot.professionalId);
+    vi.stubEnv('META_INSTAGRAM_PILOT_REEL_ID', pilot.reelId); vi.stubEnv('META_INSTAGRAM_APPROVED_REEL_ID', campaignReel);
+    vi.stubEnv('META_INSTAGRAM_APPROVED_AD_MEDIA_ID', adMediaId); vi.stubEnv('META_WEBHOOK_APP_ALIAS', pilot.alias);
+    await process(f.accountId, f.eventId);
+    await process(f.accountId, f.eventId);
+    expect(await db.deliveryIntent.count({ where: { accountId: f.accountId } })).toBe(1);
+    expect((await db.inboundEvent.findUniqueOrThrow({ where: { accountId_id: { accountId: f.accountId, id: f.eventId } } })).payload)
+      .toMatchObject({ mediaId: adMediaId });
+  });
+
   it('modo de campanha recusa receita com termo ou sequência diferente', async () => {
     const f = await fixture({ mediaId: '17890000000000003', ruleMediaId: '17890000000000003', config: { ...emptyRecipe, terms: ['prévia', 'site'], introduction: META_PILOT_APPROVED_TEXT } });
     vi.stubEnv('PERSONAFLOW_MODE', 'production'); vi.stubEnv('PERSONAFLOW_SEND_MODE', 'meta-campaign-private-reply');

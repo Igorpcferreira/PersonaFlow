@@ -1,5 +1,18 @@
 # Handoff
 
+**Retomada atual, 03/10/2026:** a mídia AD do Reel turbinado foi incluída como
+alias explícito da campanha orgânica autorizada. Diagnóstico anterior de
+segunda publicação superado, sem pendência de aprovação desse alias.
+Correção testada (102 unitários, 103 integrações, build VPS) e implantada.
+Web/worker ativos, HTTPS 200 e API sem login 401. Backup privado de reversão.
+Não repetir a DM externa encontrada às 15h23 UTC. A confirmação pública foi
+recuperada uma vez, fonte manual-recovery, ID `18110249759335205`, texto e
+parent_id conferidos por GET. Não houve intenção privada do PersonaFlow.
+API omitiu from na lista de replies; verificar pelo ID/parent, sem presumir
+ausência. Ciclo automático completo em novo comentário AD aguarda evento
+natural. Fonte/limites em STATUS e D:\Kyber\docs\personaflow.md.
+Alterações locais ainda sem push; não restaurar arquivos antigos por Git.
+
 **Estado mais recente, conferido em 01/10/2026:** o app Meta está publicado, e o teste de um comentário `prévia` da conta pessoal de Pedro no Reel escolhido concluiu webhook, intenção, aceite da API e DM visível na caixa do destinatário. O worker está ativo, mas `PERSONAFLOW_SEND_MODE=disabled` foi restaurado depois do teste. O gate de ID único impede novos envios. O painel operacional real e o atendimento de contas sem papel de teste não foram validados. A Meta exige identificação irreversível como Provedor de Tecnologia antes de adicionar a permissão à análise; decisão de Pedro solicitada. Ler o fim de `docs/STATUS.md` e `docs/META_APP_REVIEW_PREP.md` antes de continuar. O restante deste arquivo registra o MVP local histórico.
 
 Atualizado em **30/09/2026**. **Goal do MVP local concluído; Pedro pediu continuidade para uso real da Kyber.** Ler AGENTS → README → STATUS → este arquivo → BACKLOG; conferir Git/processos antes de executar novos comandos. A autorização local anterior foi registrada em PF-003/PROXIMA_SESSAO; o novo pedido de 30/09 amplia o objetivo, mas envio externo depende de fluxo e conta concretos confirmados.

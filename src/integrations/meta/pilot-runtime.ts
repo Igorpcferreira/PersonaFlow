@@ -41,6 +41,7 @@ const futureReelConfigSchema = z.object({
   META_INSTAGRAM_PILOT_ACCOUNT_ID: z.uuid(),
   META_INSTAGRAM_PILOT_PROFESSIONAL_ID: z.string().regex(/^\d+$/),
   META_INSTAGRAM_APPROVED_REEL_ID: z.string().regex(/^[1-9]\d*$/),
+  META_INSTAGRAM_APPROVED_AD_MEDIA_ID: z.string().regex(/^[1-9]\d*$/).optional(),
   META_WEBHOOK_APP_ALIAS: z.string().regex(/^[a-z0-9-]{1,50}$/),
 });
 
@@ -50,6 +51,7 @@ export type ApprovedFutureMetaPilot = Readonly<{
   accountId: string;
   professionalId: string;
   reelId: string;
+  approvedAdMediaId?: string;
   webhookAlias: string;
   keyword: 'prévia';
   approvedText: typeof META_CAMPAIGN_APPROVED_TEXT;
@@ -63,15 +65,27 @@ export function readApprovedFutureMetaPilot(env: Record<string, string | undefin
   const parsed = futureReelConfigSchema.safeParse(env);
   if (!parsed.success) return null;
   const config = parsed.data;
-  if (config.META_INSTAGRAM_APPROVED_REEL_ID === env.META_INSTAGRAM_PILOT_REEL_ID) return null;
+  const approvedAdMediaId = config.META_INSTAGRAM_APPROVED_AD_MEDIA_ID;
+  if (config.META_INSTAGRAM_APPROVED_REEL_ID === env.META_INSTAGRAM_PILOT_REEL_ID ||
+      (approvedAdMediaId !== undefined && (approvedAdMediaId === config.META_INSTAGRAM_APPROVED_REEL_ID ||
+        approvedAdMediaId === env.META_INSTAGRAM_PILOT_REEL_ID))) return null;
   return {
     accountId: config.META_INSTAGRAM_PILOT_ACCOUNT_ID,
     professionalId: config.META_INSTAGRAM_PILOT_PROFESSIONAL_ID,
     reelId: config.META_INSTAGRAM_APPROVED_REEL_ID,
+    ...(approvedAdMediaId ? { approvedAdMediaId } : {}),
     webhookAlias: config.META_WEBHOOK_APP_ALIAS,
     keyword: 'prévia',
     approvedText: META_CAMPAIGN_APPROVED_TEXT,
   };
+}
+
+/** Maps only the explicitly approved ad alias back to the campaign's organic Reel. */
+export function canonicalApprovedCampaignMediaId(campaign: ApprovedFutureMetaPilot, mediaId: string | null | undefined) {
+  if (typeof mediaId !== 'string' || mediaId.length === 0) return null;
+  return mediaId === campaign.reelId || (campaign.approvedAdMediaId !== undefined && mediaId === campaign.approvedAdMediaId)
+    ? campaign.reelId
+    : null;
 }
 
 export function isApprovedFutureMetaPilotRecipe(config: {
@@ -112,10 +126,11 @@ export function allowsMetaPilotDecision(env: Record<string, string | undefined>,
     if ((planned.length !== 1 && planned.length !== 2) || context.account.id !== campaign.accountId ||
         context.account.professionalId !== campaign.professionalId ||
         context.account.webhookAppAlias !== campaign.webhookAlias) return false;
-    const privateAllowed = validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
+    const canonicalMediaId = canonicalApprovedCampaignMediaId(campaign, context.payload.mediaId);
+    const privateAllowed = canonicalMediaId !== null && validateMetaPilot({ professionalId: BigInt(campaign.professionalId), mediaId: campaign.reelId,
       keyword: campaign.keyword, acceptUnaccented: true, approvedText: campaign.approvedText }, {
       account: { professionalId: context.account.professionalId },
-      event: { professionalId: context.account.professionalId, kind: context.event.kind as CanonicalEvent['kind'], mediaId: context.payload.mediaId,
+      event: { professionalId: context.account.professionalId, kind: context.event.kind as CanonicalEvent['kind'], mediaId: canonicalMediaId,
         text: context.payload.text, echo: context.payload.echo }, intent: planned[0],
     }).allowed;
     return privateAllowed && (planned.length === 1 || (planned[1].source === 'automatic' &&

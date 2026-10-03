@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowsMetaPilotDecision, isMetaPilotProduction, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXTS, META_CAMPAIGN_WHATSAPP_URL, META_PILOT_APPROVED_TEXT, publicReplyForComment, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, canonicalApprovedCampaignMediaId, isMetaPilotProduction, META_CAMPAIGN_APPROVED_TEXT, META_CAMPAIGN_PUBLIC_REPLY_TEXTS, META_CAMPAIGN_WHATSAPP_URL, META_PILOT_APPROVED_TEXT, publicReplyForComment, readApprovedFutureMetaPilot } from '../../src/integrations/meta/pilot-runtime';
 import type { NormalizedInbound } from '../../src/modules/inbox/ingestion';
 
 const env = { PERSONAFLOW_MODE: 'production', META_INSTAGRAM_PILOT_ACCOUNT_ID: '11111111-1111-4111-8111-111111111111',
@@ -33,11 +33,12 @@ describe('runtime do piloto Meta', () => {
   });
 
   it('prepara somente um Reel futuro explícito e mantém o transporte desativado', () => {
-    const future = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' };
+    const future = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003', META_INSTAGRAM_APPROVED_AD_MEDIA_ID: '17890000000000004' };
     expect(readApprovedFutureMetaPilot(future)).toEqual({
       accountId: env.META_INSTAGRAM_PILOT_ACCOUNT_ID,
       professionalId: env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID,
       reelId: '17890000000000003',
+      approvedAdMediaId: '17890000000000004',
       webhookAlias: env.META_WEBHOOK_APP_ALIAS,
       keyword: 'prévia',
       approvedText: META_CAMPAIGN_APPROVED_TEXT,
@@ -49,6 +50,9 @@ describe('runtime do piloto Meta', () => {
     ['modo de teste', { ...env, PERSONAFLOW_SEND_MODE: 'meta-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003' }],
     ['Reel do piloto atual', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: env.META_INSTAGRAM_PILOT_REEL_ID }],
     ['ID inválido', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: 'reel-futuro' }],
+    ['alias inválido', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003', META_INSTAGRAM_APPROVED_AD_MEDIA_ID: 'ad-futuro' }],
+    ['alias igual ao Reel orgânico', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003', META_INSTAGRAM_APPROVED_AD_MEDIA_ID: '17890000000000003' }],
+    ['alias igual ao Reel do piloto', { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '17890000000000003', META_INSTAGRAM_APPROVED_AD_MEDIA_ID: env.META_INSTAGRAM_PILOT_REEL_ID }],
   ] as const)('fecha a preparação %s', (_name, candidate) => {
     expect(readApprovedFutureMetaPilot(candidate)).toBeNull();
   });
@@ -65,6 +69,30 @@ describe('runtime do piloto Meta', () => {
     expect(allowsMetaPilotDecision(campaign, campaignContext, [campaignIntent,
       { source: 'automatic', effect: 'public_reply', body: { text: 'Outro texto' } }])).toBe(false);
     expect(allowsMetaPilotDecision(campaign, { ...campaignContext, payload: { ...campaignContext.payload, mediaId: env.META_INSTAGRAM_PILOT_REEL_ID } }, [campaignIntent])).toBe(false);
+  });
+
+  it('normaliza somente o alias AD explícito para decisão, sem ampliar outros Reels', () => {
+    const campaign = { ...env, PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '18123125078313719', META_INSTAGRAM_APPROVED_AD_MEDIA_ID: '18017974439949523' };
+    const approved = readApprovedFutureMetaPilot(campaign)!;
+    const campaignIntent = { ...intent, body: { text: META_CAMPAIGN_APPROVED_TEXT } };
+    const adContext = { ...context, event: { ...context.event, externalId: 'comment:17890000000000009' },
+      payload: { ...context.payload, mediaId: approved.approvedAdMediaId } } as NormalizedInbound;
+    expect(canonicalApprovedCampaignMediaId(approved, adContext.payload.mediaId)).toBe(approved.reelId);
+    expect(adContext.payload.mediaId).toBe('18017974439949523');
+    expect(allowsMetaPilotDecision(campaign, adContext, [campaignIntent])).toBe(true);
+    expect(allowsMetaPilotDecision(campaign, { ...adContext, payload: { ...adContext.payload, mediaId: '18017974439949524' } }, [campaignIntent])).toBe(false);
+  });
+
+  it('mantém a campanha orgânica sem piloto ou alias e recusa mídia ausente', () => {
+    const campaign = { PERSONAFLOW_MODE: env.PERSONAFLOW_MODE, META_INSTAGRAM_PILOT_ACCOUNT_ID: env.META_INSTAGRAM_PILOT_ACCOUNT_ID,
+      META_INSTAGRAM_PILOT_PROFESSIONAL_ID: env.META_INSTAGRAM_PILOT_PROFESSIONAL_ID, META_WEBHOOK_APP_ALIAS: env.META_WEBHOOK_APP_ALIAS,
+      PERSONAFLOW_SEND_MODE: 'meta-campaign-private-reply', META_INSTAGRAM_APPROVED_REEL_ID: '18123125078313719' };
+    const approved = readApprovedFutureMetaPilot(campaign)!;
+    expect(approved).toMatchObject({ reelId: '18123125078313719' });
+    expect(approved.approvedAdMediaId).toBeUndefined();
+    expect(canonicalApprovedCampaignMediaId(approved, undefined)).toBeNull();
+    expect(canonicalApprovedCampaignMediaId(approved, null)).toBeNull();
+    expect(canonicalApprovedCampaignMediaId(approved, '')).toBeNull();
   });
 
   it('usa somente o endereço curto na DM', () => {
