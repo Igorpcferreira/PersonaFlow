@@ -26,8 +26,8 @@ export interface MetaPrivateReplyCommand {
 export type MetaPrivateReplyResult =
   | { readonly kind: 'accepted'; readonly status: number; readonly messageId: string | null }
   | { readonly kind: 'confirmed_before_send'; readonly reason: 'invalid_configuration' | 'professional_account_mismatch' | 'invalid_comment_external_id' | 'text_not_approved' }
-  | { readonly kind: 'rejected'; readonly reason: 'http_4xx'; readonly status: number }
-  | { readonly kind: 'ambiguous'; readonly reason: 'timeout' | 'network_after_request' | 'http_5xx' | 'unexpected_http_status' | 'response_too_large'; readonly status?: number };
+  | { readonly kind: 'rejected'; readonly reason: 'http_4xx'; readonly status: number; readonly metaCode?: number }
+  | { readonly kind: 'ambiguous'; readonly reason: 'timeout' | 'network_after_request' | 'http_5xx' | 'meta_uncertain_error' | 'unexpected_http_status' | 'response_too_large'; readonly status?: number; readonly metaCode?: number };
 
 export interface MetaPrivateReplyOptions {
   readonly fetch?: typeof fetch;
@@ -74,6 +74,36 @@ async function readBoundedResponse(response: Response, signal: AbortSignal): Pro
   return { tooLarge: false, text: new TextDecoder().decode(bytes) };
 }
 
+/** Meta codes 1 (unknown) and 2 (service) may follow a request that Meta already processed. */
+const UNCERTAIN_META_CODES = new Set([1, 2]);
+
+function metaErrorCodeFrom(body: string): number | null {
+  if (!body) return null;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (typeof parsed !== 'object' || parsed === null || !('error' in parsed)) return null;
+    const error: unknown = parsed.error;
+    if (typeof error !== 'object' || error === null || !('code' in error)) return null;
+    return typeof error.code === 'number' && Number.isSafeInteger(error.code) ? error.code : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Classifies an HTTP error response without retrying. Every 5xx and the Meta codes 1 and 2 stay
+ * ambiguous; other 4xx are rejections. An unreadable error body keeps the HTTP classification.
+ */
+export async function classifyMetaHttpError(response: Response, signal: AbortSignal): Promise<MetaPrivateReplyResult> {
+  const bounded = await readBoundedResponse(response, signal).catch(() => ({ tooLarge: false, text: '' }));
+  const metaCode = bounded.tooLarge ? null : metaErrorCodeFrom(bounded.text);
+  const code = metaCode === null ? {} : { metaCode };
+  if (response.status >= 500) return { kind: 'ambiguous', reason: 'http_5xx', status: response.status, ...code };
+  if (metaCode !== null && UNCERTAIN_META_CODES.has(metaCode))
+    return { kind: 'ambiguous', reason: 'meta_uncertain_error', status: response.status, metaCode };
+  return { kind: 'rejected', reason: 'http_4xx', status: response.status, ...code };
+}
+
 function messageIdFrom(body: string): string | null {
   if (!body) return null;
   try {
@@ -89,8 +119,8 @@ function messageIdFrom(body: string): string | null {
  * Sends one already-authorized private reply through the official Instagram Graph endpoint.
  *
  * This module deliberately has no runtime/configuration lookup, persistence, retries, or logs.
- * A network failure after fetch begins, a timeout, and a 5xx remain ambiguous because delivery
- * might have reached Meta. Callers must record that terminal state and must not retry it here.
+ * A network failure after fetch begins, a timeout, a 5xx, and the Meta codes 1 and 2 remain
+ * ambiguous because delivery might have reached Meta. Callers must record that terminal state and must not retry it here.
  */
 export async function sendMetaPrivateReply(config: MetaPrivateReplyConfig, command: MetaPrivateReplyCommand,
   options: MetaPrivateReplyOptions = {}): Promise<MetaPrivateReplyResult> {
@@ -121,8 +151,7 @@ export async function sendMetaPrivateReply(config: MetaPrivateReplyConfig, comma
         : { text: command.text } }),
       signal: controller.signal,
     });
-    if (response.status >= 400 && response.status < 500) return { kind: 'rejected', reason: 'http_4xx', status: response.status };
-    if (response.status >= 500) return { kind: 'ambiguous', reason: 'http_5xx', status: response.status };
+    if (response.status >= 400) return classifyMetaHttpError(response, controller.signal);
     if (response.status < 200 || response.status >= 300) return { kind: 'ambiguous', reason: 'unexpected_http_status', status: response.status };
     const bounded = await readBoundedResponse(response, controller.signal);
     if (bounded.tooLarge) return { kind: 'ambiguous', reason: 'response_too_large', status: response.status };

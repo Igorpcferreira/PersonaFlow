@@ -186,8 +186,10 @@ export async function executeIntent(db: Database, vault: TokenVault, transport: 
           status = result.kind === 'accepted' ? 'accepted' : result.kind === 'ambiguous' ? 'unknown' :
             result.kind === 'rejected' ? 'rejected' : 'blocked';
           acceptedId = result.kind === 'accepted' ? result.messageId : null;
-          reason = result.kind === 'accepted' ? 'meta_api_accepted' : result.kind === 'rejected' ? 'meta_rejected' :
-            result.kind === 'confirmed_before_send' ? 'meta_preflight_failed' : 'meta_result_ambiguous';
+          // The Meta error code, when present, stays in the reason; an ambiguous result is never retried.
+          const metaCode = result.kind === 'rejected' || result.kind === 'ambiguous' ? result.metaCode : undefined;
+          reason = result.kind === 'accepted' ? 'meta_api_accepted' : result.kind === 'confirmed_before_send' ? 'meta_preflight_failed' :
+            `${result.kind === 'rejected' ? 'meta_rejected' : 'meta_result_ambiguous'}${metaCode === undefined ? '' : `_code_${metaCode}`}`;
         }
       } else {
         const result = await Promise.race([

@@ -1,4 +1,4 @@
-import type { MetaPrivateReplyOptions, MetaPrivateReplyResult } from './private-reply';
+import { classifyMetaHttpError, type MetaPrivateReplyOptions, type MetaPrivateReplyResult } from './private-reply';
 
 type Config = { graphVersion: string; professionalId: string; accessToken: string; approvedText: string };
 type Command = { professionalId: string; commentExternalId: string; text: string };
@@ -24,8 +24,7 @@ export async function sendMetaPublicReply(config: Config, command: Command,
       method: 'POST', headers: { authorization: `Bearer ${config.accessToken}`, 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ message: command.text }), signal: controller.signal,
     });
-    if (response.status >= 400 && response.status < 500) return { kind: 'rejected', reason: 'http_4xx', status: response.status };
-    if (response.status >= 500) return { kind: 'ambiguous', reason: 'http_5xx', status: response.status };
+    if (response.status >= 400) return classifyMetaHttpError(response, controller.signal);
     if (response.status < 200 || response.status >= 300) return { kind: 'ambiguous', reason: 'unexpected_http_status', status: response.status };
     const length = response.headers.get('content-length');
     if (length && Number(length) > 4096) return { kind: 'ambiguous', reason: 'response_too_large', status: response.status };

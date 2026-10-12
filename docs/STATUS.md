@@ -1,5 +1,25 @@
 # Estado atual
 
+## Backup diário e mapa de erros da Meta, 12/10/2026 (branch `pedro/backup-diario`)
+
+- **VPS limpa:** as alterações soltas da VPS eram o commit `18ea4ed`, idêntico por hash. Ele subiu
+  na branch do PR, e a VPS foi alinhada a ele sem reiniciar serviço.
+  - `next-env.d.ts` (gerado pelo build de produção) ficou com `skip-worktree`.
+  - `artifacts/` e `.stage-ad-20261003/` ficaram em `.git/info/exclude`.
+- **Backup:** `personaflow-backup.timer` gera um `pg_dump -Fc` por dia às 06:41 UTC em
+  `~/backups/personaflow/`, guardando 14. O PC puxa os arquivos com `deploy/puxar-backup.ps1`, às 10h
+  e às 20h, e guarda 30. Instalado e rodado em 12/10.
+  - Restauração conferida num contêiner sem rede: 33 tabelas, contagem igual à do banco vivo
+    tabela a tabela.
+  - Ver "Backup diário do banco" em `deploy/README.md`.
+- **Mapa de erros:**
+  - Os códigos Meta 1 e 2 agora dão resultado incerto (`meta_uncertain_error`), como todo 5xx, nas
+    respostas privada e pública. O resto dos 4xx continua como recusa.
+  - O código fica no `reason` da intenção (ex.: `meta_rejected_code_190`).
+  - Resultado incerto nunca é reenviado, e as tentativas já ficavam em `DeliveryAttempt`.
+  - Validação: `npm run check` (109 unitários) e `npm run test:integration` (103), no PC.
+  - Ainda não implantado na VPS: o merge e a implantação ficam com o Igor.
+
 ## Incidente de comentário sem resposta, 03/10/2026, correção em andamento
 
 Diagnóstico anterior de segunda publicação independente superado. Pedro

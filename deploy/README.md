@@ -26,6 +26,27 @@ Os dois arquivos devem usar a mesma credencial e o mesmo banco `personaflow_*`. 
 4. Substitua os placeholders TLS e ACME do template Nginx, instale-o como root, valide com `nginx -t` e recarregue o Nginx. O template não deve ser instalado enquanto o DNS e o certificado não existirem.
 5. Substitua os placeholders de `personaflow-app.logrotate.conf.template` e `personaflow-retention.logrotate.conf.template`, valide com `logrotate -d` e instale a rotação diária de 30 dias. Diretório e logs devem ser privados (`0700` e `0600`), inclusive após rotação. Antes de declarar a política de logs cumprida, confira em uma execução real que web e worker escrevem apenas eventos sanitizados, sem URL de OAuth, corpo de webhook, token ou mensagem.
 
+## Backup diário do banco
+
+- **Na VPS:** `personaflow-backup.sh` roda o `pg_dump -Fc` dentro do contêiner, com as variáveis dele (nenhuma credencial passa pelo script).
+  - Confere o arquivo com `pg_restore --list` e grava o `.sha256`.
+  - Mantém os 14 mais novos em `~/backups/personaflow/` (pasta `0700`, arquivos `0600`) e escreve `ultimo-ok`.
+  - Instalação: copie o script para `~/.local/bin/personaflow-backup` (modo `0700`) e as units `personaflow-backup.service.template` e `.timer.template` para `~/.config/systemd/user/`, sem o `.template`.
+  - Depois: `systemctl --user daemon-reload` e `systemctl --user enable --now personaflow-backup.timer`. O timer roda às 06:41 UTC.
+- **Fora da VPS:** `puxar-backup.ps1`, no PC do operador, copia por `scp` os dumps que faltam e confere o SHA-256 de cada um.
+  - Guarda os 30 mais novos em `%USERPROFILE%\Backups\personaflow\`.
+  - `-Agendar` instala a cópia nessa pasta e agenda no Agendador do Windows às 10h e às 20h, com `StartWhenAvailable`.
+  - O log fica em `puxar.log`.
+- **Restaurar e conferir:** num contêiner sem rede, nunca no banco vivo.
+  ```sh
+  docker run -d --rm --name pf-restaura-teste --network none -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16.11-alpine
+  docker exec pf-restaura-teste createdb -U postgres restaurado
+  docker exec -i pf-restaura-teste pg_restore -U postgres -d restaurado --no-owner --no-privileges --exit-on-error < personaflow-<data>.dump
+  ```
+  Compare a contagem por tabela com o banco vivo e remova o contêiner (`docker rm -f pf-restaura-teste`).
+  - Conferido em 12/10/2026: 33 tabelas, contagem igual à do banco vivo tabela a tabela.
+- **Dados pessoais:** o dump contém dados pessoais de quem comentou ou mandou mensagem. Ele fica só nas duas pastas privadas e nunca vai pro git, pra nuvem ou pra mensagem.
+
 ## Pendências antes da ativação pública
 
 O modo `production` exige a origem exata `https://personaflow.somoskyber.com.br`, um único operador GitHub permitido e `GITHUB_CLIENT_ID` e `GITHUB_CLIENT_SECRET`. O callback foi testado com provedor simulado; o login real ainda depende de criar o aplicativo OAuth GitHub e da URL HTTPS. As APIs do painel sintético continuam bloqueadas em produção.
