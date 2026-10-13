@@ -9,6 +9,7 @@ Decisões registradas em 27/09/2026; atualizadas em 28/09/2026. PF-003 registra 
 | [ADR-003](003-meta-e-distribuicao.md) | Instagram Login direto, uso próprio primeiro e distribuição auto-hospedada |
 | [ADR-004](004-onboarding-meta-e-gate.md) | Um app operacional, conexões separadas e gate de eventos reais; ressalva de acesso aos webhooks |
 | [ADR-005](005-autenticacao-administrativa.md) | Better Auth implementada/validada em PF-014-L com provider sintético; GitHub real pendente |
+| [ADR-006](006-clientes-externos-e-api-v1.md) | Proposta (12/10/2026), esperando a revisão do Igor: clientes externos, campanhas no banco e API v1 |
 
 ## Perguntas que dependem do usuário
 
