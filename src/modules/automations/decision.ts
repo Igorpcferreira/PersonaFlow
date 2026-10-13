@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { PgBoss } from 'pg-boss';
 import type { NormalizedInbound } from '../inbox/ingestion';
 import { createIntentInTransaction } from '../delivery/ledger';
-import { allowsMetaPilotDecision, isApprovedFutureMetaPilotRecipe, isMetaPilotProduction, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
+import { allowsMetaPilotDecision, canonicalApprovedCampaignMediaId, isApprovedFutureMetaPilotRecipe, isMetaPilotProduction, publicReplyForComment, readApprovedFutureMetaPilot } from '../../integrations/meta/pilot-runtime';
 import { LOCAL_RECIPE_CAPABILITIES, matchingTerm, readyRecipe, recipeConfig, textReply } from './recipe';
 import { continueSequence, startSequence } from './sequence';
 
@@ -14,12 +14,17 @@ export async function decideAutomation(tx: Prisma.TransactionClient, boss: PgBos
   if (event.kind === 'postback') { await continueSequence(tx, boss, context); return; }
   if (!['comment', 'message', 'story'].includes(event.kind) || (event.kind !== 'comment' && !eligible) || event.generation !== account.connectionGeneration || payload.echo || !payload.text?.trim() ||
       account.pausedAt || contact.suppressedAt || conversation.control !== 'automatic') return;
-  const rules = await tx.automation.findMany({ where: { accountId: account.id, trigger: event.kind, mediaId: event.kind === 'comment' ? payload.mediaId : null, status: 'active' }, orderBy: { id: 'asc' } });
+  const campaign = readApprovedFutureMetaPilot(process.env);
+  const canonicalMediaId = event.kind === 'comment' && campaign
+    ? canonicalApprovedCampaignMediaId(campaign, payload.mediaId)
+    : payload.mediaId;
+  if (event.kind === 'comment' && campaign && canonicalMediaId === null) return;
+  const rules = await tx.automation.findMany({ where: { accountId: account.id, trigger: event.kind, mediaId: event.kind === 'comment' ? canonicalMediaId : null, status: 'active' }, orderBy: { id: 'asc' } });
   for (const rule of rules) {
     const result = recipeConfig.safeParse(rule.config);
     if (!result.success || !readyRecipe(result.data, event.kind) || !matchingTerm(payload.text, result.data.terms)) continue;
     const config = result.data;
-    if (readApprovedFutureMetaPilot(process.env) && !isApprovedFutureMetaPilotRecipe(config)) return;
+    if (campaign && !isApprovedFutureMetaPilotRecipe(config)) return;
     if (event.kind !== 'comment') {
       await createIntentInTransaction(tx, boss, { accountId: account.id, conversationId: conversation.id, eventId: event.id,
         automationId: rule.id, source: 'automatic', effect: 'automatic_dm', body: { text: textReply(config), ...(config.link ? { link: config.link } : {}) } });

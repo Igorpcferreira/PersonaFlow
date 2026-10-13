@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sendMetaPrivateReply, type MetaPrivateReplyCommand, type MetaPrivateReplyConfig } from '../../src/integrations/meta/private-reply';
+import { sendMetaPublicReply } from '../../src/integrations/meta/public-reply';
 
 const config: MetaPrivateReplyConfig = {
   graphVersion: 'v24.0',
@@ -84,6 +85,30 @@ describe('Meta private reply transport', () => {
   it('não aceita uma resposta bem-sucedida cujo corpo ultrapassa o limite seguro', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(200, 'x'.repeat(4_097)));
     await expect(sendMetaPrivateReply(config, command, { fetch })).resolves.toEqual({ kind: 'ambiguous', reason: 'response_too_large', status: 200 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [400, 1, { kind: 'ambiguous', reason: 'meta_uncertain_error', status: 400, metaCode: 1 }],
+    [400, 2, { kind: 'ambiguous', reason: 'meta_uncertain_error', status: 400, metaCode: 2 }],
+    [400, 190, { kind: 'rejected', reason: 'http_4xx', status: 400, metaCode: 190 }],
+    [403, 10, { kind: 'rejected', reason: 'http_4xx', status: 403, metaCode: 10 }],
+    [500, 2, { kind: 'ambiguous', reason: 'http_5xx', status: 500, metaCode: 2 }],
+  ] as const)('HTTP %i com código Meta %i fica incerto só nos códigos 1, 2 e 5xx', async (status, code, expected) => {
+    const body = JSON.stringify({ error: { message: 'x', type: 'OAuthException', code, fbtrace_id: 'trace' } });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(status, body));
+    await expect(sendMetaPrivateReply(config, command, { fetch })).resolves.toEqual(expected);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém a recusa quando o corpo do erro passa do limite seguro', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(400, `{"error":{"code":2,"pad":"${'x'.repeat(4_100)}"}}`));
+    await expect(sendMetaPrivateReply(config, command, { fetch })).resolves.toEqual({ kind: 'rejected', reason: 'http_4xx', status: 400 });
+  });
+
+  it('a resposta pública usa o mesmo mapa de erros, sem retentar', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(400, '{"error":{"code":2}}'));
+    await expect(sendMetaPublicReply(config, command, { fetch })).resolves.toEqual({ kind: 'ambiguous', reason: 'meta_uncertain_error', status: 400, metaCode: 2 });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily private PersonaFlow database backup
+After=personaflow-postgres.service
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/sg docker -c "%h/.local/bin/personaflow-backup"
+TimeoutStartSec=300

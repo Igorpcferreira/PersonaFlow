@@ -1,5 +1,92 @@
 # Estado atual
 
+## Backup diário e mapa de erros da Meta, 12/10/2026 (branch `pedro/backup-diario`)
+
+- **VPS limpa:** as alterações soltas da VPS eram o commit `18ea4ed`, idêntico por hash. Ele subiu
+  na branch do PR, e a VPS foi alinhada a ele sem reiniciar serviço.
+  - `next-env.d.ts` (gerado pelo build de produção) ficou com `skip-worktree`.
+  - `artifacts/` e `.stage-ad-20261003/` ficaram em `.git/info/exclude`.
+- **Backup:** `personaflow-backup.timer` gera um `pg_dump -Fc` por dia às 06:41 UTC em
+  `~/backups/personaflow/`, guardando 14. O PC puxa os arquivos com `deploy/puxar-backup.ps1`, às 10h
+  e às 20h, e guarda 30. Instalado e rodado em 12/10.
+  - Restauração conferida num contêiner sem rede: 33 tabelas, contagem igual à do banco vivo
+    tabela a tabela.
+  - Ver "Backup diário do banco" em `deploy/README.md`.
+- **Mapa de erros:**
+  - Os códigos Meta 1 e 2 agora dão resultado incerto (`meta_uncertain_error`), como todo 5xx, nas
+    respostas privada e pública. O resto dos 4xx continua como recusa.
+  - O código fica no `reason` da intenção (ex.: `meta_rejected_code_190`).
+  - Resultado incerto nunca é reenviado, e as tentativas já ficavam em `DeliveryAttempt`.
+  - Validação: `npm run check` (109 unitários) e `npm run test:integration` (103), no PC.
+  - Ainda não implantado na VPS: o merge e a implantação ficam com o Igor.
+
+## Incidente de comentário sem resposta, 03/10/2026, correção em andamento
+
+Diagnóstico anterior de segunda publicação independente superado. Pedro
+mostrou o Reel turbinado. GETs oficiais confirmaram `media_product_type:REELS`
+para a mídia aprovada `18123125078313719` e `media_product_type:AD` para
+`18017974439949523`, mesmo proprietário e SHA-256 da legenda. A recusa do
+comentário `18126726763852844` veio do filtro de uma mídia orgânica, não de
+palavra-chave, credencial, worker desligado ou rejeição da Meta.
+O evento recebido às `2026-10-03T13:49:30.357Z` foi processado às
+`13:49:30.891Z`, preservando o ID AD e sem intenção/tentativa do PersonaFlow.
+A associação desse AD específico atende à campanha já aprovada; não existe
+pendência de ampliar para uma segunda publicação.
+
+GET oficial de conversations/messages identificou mensagem de saída da
+Kyber às `2026-10-03T15:23:01Z` contendo o link curto, não o texto exato do
+PersonaFlow. Não registrar como envio do worker, não inventar tentativa ou
+repetir a DM. O GET público das respostas estava vazio. A confirmação
+pública pode ser recuperada somente após conferir esse envio externo e
+proteger a intenção por comentário/efeito. Não usar o comando de piloto
+antigo, modificar datas ou reprocessar todos os comentários.
+
+### Correção implantada em 03/10/2026, conferida às 17h07 UTC
+
+`META_INSTAGRAM_APPROVED_AD_MEDIA_ID=18017974439949523` foi configurado na
+VPS. `canonicalApprovedCampaignMediaId` aceita apenas a mídia orgânica ou o
+alias AD explícito. Decisão escolhe a mesma regra orgânica; executor confere
+alias na reserva e imediatamente antes do HTTP. Evento/data e controles de
+conta, credencial, receita e deduplicação permanecem. O verificador
+`campaign-evidence.ts` reconhece o alias e mostra a origem da intenção,
+inclusive quando envio fica desabilitado. Não houve nova automação nem
+migração de banco, mudança em anúncio ou ampliação para outros conteúdos.
+
+Validações: `npm run check` (lint, tipos, 102 unitários),
+`npm run test:integration` (103 integrações PostgreSQL isolado), build na
+VPS e conferência de hashes dos quatro arquivos instalados. Os testes
+cobrem orgânico e AD, ausência/alias inválido, terceiro ID, retirada/troca
+entre reserva e HTTP, replay de privado/público e ID bruto preservado.
+A seleção viva aceita o evento real AD e recusa terceiro ID, sem criar
+intenção nessa leitura. Web e worker ativos, HTTPS raiz 200 e API sem sessão
+401. O build inicial isolado compilou, mas symlinks de módulos ficaram
+inválidos após relocação: web anterior restaurada, build repetido no caminho
+canônico e proteção 401 reconferida. Backup privado de fontes, runtime e
+build anterior em `/home/pedro/.local/state/personaflow/backup-ad-20261003`.
+Somente units PersonaFlow foram reiniciadas. Nenhuma dependência instalada,
+permissão ampliada, segredo exibido ou serviço Hermes alterado.
+
+Recuperação pontual: a API confirmou mensagem externa de saída com o link
+curto às 15h23 UTC; não foi registrada como DM do worker nem reenviada.
+Artefato restrito ao ID exato conferiu comentário, envio externo, ausência
+prévia de intenção/resposta, data original, estado/revisão e limite. Aborta
+com paginação incompleta, reconfere respostas/contexto imediatamente antes
+do POST e mantém resultado incerto sem retry. Há janela residual entre GET
+e POST externo, pois a Meta não fornece operação condicional atômica.
+A confirmação pública foi aceita em uma tentativa, intenção de origem
+`manual-recovery`, ID `18110249759335205`. GET do ID retornou 200, texto
+aprovado e `parent_id:18126726763852844`; o GET de replies retornou o mesmo ID
+sem campo `from`, que não deve ser usado sozinho para afirmar ausência.
+Isso comprova aceite e objeto publicado na API, não leitura/observação
+humana. Nenhuma intenção privada foi criada. Recuperação não virou serviço
+recorrente nem ferramenta do Hermes. Evidência selecionada local:
+`artifacts/incident-2026-10-03-ad/evidence.json`.
+
+Aguardando somente próximo comentário natural para observar o ciclo inteiro
+DM automática AD e confirmação pública; não reenviar históricos para testar.
+Código local e VPS no mesmo conteúdo verificado por hash, alterações ainda
+não enviadas ao GitHub. Preservados next-env.d.ts e artifacts/ preexistentes.
+
 Atualização conferida em 01/10/2026 às 14h05: site publicado com `/suaprevia` (Kyber PR #41), destinos de Pedro/Igor e texto validados por HTTP. Regra da VPS migrada para texto com link curto, web/worker ativos no commit `7ebfc7f`. Botão restrito testado no comentário `18018830657927531` de `@pedroll0`: DM e público aceitos uma vez com ID; mensagem vista na caixa destinatária no Web, botão não renderizado. Pedro decidiu em 01/10/2026 manter o link curto e encerrar a pendência de confirmação no celular. O experimento não demonstra inviabilidade do botão; template não ativado para a campanha. Seletor de teste removido da VPS. Passaram 97 unitários, 99 integrações e build na VPS. Os parágrafos anteriores sobre URL longa abaixo são evidências históricas.
 
 Atualização de 01/10/2026 às 13h38 (Goiânia), conferida no código, na VPS e no Instagram Web: Pedro aprovou substituir a DM inicial da campanha pelo link direto para `somoskyber.com.br/fale`, identificado como `instagram-reels-previa` e com texto “Reels da Kyber” pré-preenchido. A pessoa precisa enviar a mensagem no WhatsApp. O caminho entre Pedro e Igor é responsabilidade da rota existente do site da Kyber. A campanha também tem três respostas públicas aprovadas, escolhidas de forma estável pelo ID do comentário, aproximadamente um terço para cada frase. A resposta pública continua condicionada ao aceite da DM; cada efeito mantém uma única intenção por comentário. Passaram localmente 95 testes unitários, 99 integrações e build. A VPS compilou `2a807c1`, a regra foi migrada com o worker parado e envio desligado, e web/worker voltaram ativos com `meta-campaign-private-reply`. O comentário controlado `18097003175554197` de `@pedroll0` no Reel aprovado produziu DM e resposta pública `accepted`, uma tentativa e ID da Meta para cada. O Instagram Web exibiu o link como clicável na DM da conta de teste e a resposta pública sob o comentário. Este teste exerceu uma das três frases; as demais têm validação de código/testes, ainda sem observação no Instagram. Não houve reenvio de comentários antigos nem mensagem enviada no WhatsApp pela pessoa de teste.
