@@ -22,7 +22,8 @@ Em 12/10/2026, a [ADR-006](decisions/006-clientes-externos-e-api-v1.md) (cliente
   - O código fica no `reason` da intenção (ex.: `meta_rejected_code_190`).
   - Resultado incerto nunca é reenviado, e as tentativas já ficavam em `DeliveryAttempt`.
   - Validação: `npm run check` (109 unitários) e `npm run test:integration` (103), no PC.
-  - Ainda não implantado na VPS: o merge e a implantação ficam com o Igor.
+  - Na `master` desde 13/10/2026, junto com o `18ea4ed` e a ADR-006, a pedido do Igor. A implantação
+    do mapa de erros na VPS ainda não foi feita.
 
 ## Incidente de comentário sem resposta, 03/10/2026, correção em andamento
 
