@@ -1,5 +1,9 @@
 # Estado atual
 
+## ADR-006, 12/10/2026 (proposta)
+
+Em 12/10/2026, a [ADR-006](decisions/006-clientes-externos-e-api-v1.md) (clientes externos, campanhas no banco e API v1) foi registrada como **proposta**, esperando a revisão do Igor. Só documento: nada de código, migração ou configuração mudou. O PR #1 já está na `master` (merge `7ba5ce6`).
+
 ## Backup diário e mapa de erros da Meta, 12/10/2026 (branch `pedro/backup-diario`)
 
 - **VPS limpa:** as alterações soltas da VPS eram o commit `18ea4ed`, idêntico por hash. Ele subiu
